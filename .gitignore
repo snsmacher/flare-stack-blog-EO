@@ -40,3 +40,4 @@ dist-old/
 .agents/
 .cloudflare/
 .workbuddy/
+.d1-export/

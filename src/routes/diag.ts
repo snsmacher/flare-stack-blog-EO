@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { getPublishedPostsForSitemapBatch } from "@/features/posts/data/posts.data";
+import { getHomePosts } from "@/features/posts/data/posts.data";
+import { invalidate } from "@/features/cache/public-cache";
 
 /**
  * Temporary production diagnostic endpoint: /diag?k=<TOKEN>
@@ -97,14 +98,34 @@ export const Route = createFileRoute("/diag")({
 
         // 4) real post query path (what the homepage loader runs)
         try {
-          const rows = await getPublishedPostsForSitemapBatch({ limit: 3 } as never);
+          const db = getDb(context.env as Env);
+          const home = await getHomePosts(db, 1);
           out.postsQuery = "ok";
-          out.postsCount = Array.isArray(rows) ? rows.length : typeof rows;
+          out.homePostCount = Array.isArray(home) ? home.length : typeof home;
+          out.homePostTitles = Array.isArray(home)
+            ? home.map((p) => (p.publicSnapshotJson as { title?: string } | null)?.title ?? p.id)
+            : undefined;
         } catch (e) {
           const err = e as { message?: string; code?: string };
           out.postsQuery = "FAIL";
           out.postsError = String(err?.message ?? e).slice(0, 800);
           out.postsErrorCode = err?.code;
+        }
+
+        // 5) bust every public cache generation (same KV `ver:<ns>` keys the
+        // admin mutations bump). Used once after the D1 → Neon import, since
+        // raw SQL writes never emitted invalidation events.
+        if (url.searchParams.get("bust") === "1") {
+          try {
+            await invalidate.all({
+              env: context.env,
+              executionCtx: { waitUntil: () => {}, passThroughOnException: () => {} },
+            } as never);
+            out.cacheBust = "ok";
+          } catch (e) {
+            out.cacheBust = "FAIL";
+            out.cacheBustError = String((e as Error)?.message ?? e).slice(0, 500);
+          }
         }
 
         return new Response(JSON.stringify(out, null, 2), {
