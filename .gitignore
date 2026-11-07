@@ -1,0 +1,42 @@
+node_modules
+.DS_Store
+dist
+dist-ssr
+*.local
+count.txt
+.env
+.env.local
+.dev.vars
+.nitro
+.tanstack
+.wrangler
+.output
+.vinxi
+todos.json
+drizzle
+tmp/
+test.http
+.secrets
+docs/superpowers/
+.cache/
+*.tsbuildinfo
+.fallow
+.scratch
+# cf build output
+.cloudflare
+
+# Tencent Cloud EdgeOne
+.env
+.env.local
+.edgeone/*
+.tef_dist/*
+  
+# local artifacts
+.edgeone-old/
+dist-old/
+data/
+.srv.log
+.claude/
+.agents/
+.cloudflare/
+.workbuddy/
