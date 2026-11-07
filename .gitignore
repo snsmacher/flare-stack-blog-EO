@@ -34,7 +34,7 @@ docs/superpowers/
 # local artifacts
 .edgeone-old/
 dist-old/
-data/
+/data/
 .srv.log
 .claude/
 .agents/
