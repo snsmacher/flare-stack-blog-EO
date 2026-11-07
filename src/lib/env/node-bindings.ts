@@ -7,19 +7,37 @@
 
 import { kv } from "./kv";
 
-// Explicit (dotted) reads so the `bake-secrets-for-ssr` Vite define can
-// replace them with build-time literals. A bare `...process.env` spread is
-// opaque to define and stays empty on platforms that don't inject runtime
-// env into the process (EdgeOne Node cloud functions).
+// Lazy getters (NOT eager values) so reads happen at request time, AFTER the
+// EdgeOne wrapper patch has merged `context.env` into process.env. Module
+// load time is too early: the cloud-function container boots with an empty
+// process.env and only receives Makers variables with the first invocation.
+// Dotted reads also let the `bake-secrets-for-ssr` Vite define replace them
+// with build-time literals when baking is available.
 const bakedEnv = {
-  DATABASE_URL: process.env.DATABASE_URL,
-  DATABASE_URL_DIRECT: process.env.DATABASE_URL_DIRECT,
-  PG_POOL_MAX: process.env.PG_POOL_MAX,
-  BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
-  DOMAIN: process.env.DOMAIN,
-  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
-  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
+  get DATABASE_URL() {
+    return process.env.DATABASE_URL;
+  },
+  get DATABASE_URL_DIRECT() {
+    return process.env.DATABASE_URL_DIRECT;
+  },
+  get PG_POOL_MAX() {
+    return process.env.PG_POOL_MAX;
+  },
+  get BETTER_AUTH_SECRET() {
+    return process.env.BETTER_AUTH_SECRET;
+  },
+  get BETTER_AUTH_URL() {
+    return process.env.BETTER_AUTH_URL;
+  },
+  get DOMAIN() {
+    return process.env.DOMAIN;
+  },
+  get GITHUB_CLIENT_ID() {
+    return process.env.GITHUB_CLIENT_ID;
+  },
+  get GITHUB_CLIENT_SECRET() {
+    return process.env.GITHUB_CLIENT_SECRET;
+  },
 };
 
 /**

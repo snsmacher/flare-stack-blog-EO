@@ -34,7 +34,7 @@
     "release": "export GITHUB_TOKEN=$(gh auth token) && release-it",
     "release:beta": "export GITHUB_TOKEN=$(gh auth token) && release-it --preRelease=beta",
     "prepare": "husky",
-    "build:eo": "vite build"
+    "build:eo": "vite build && node scripts/patch-eo-handler.mjs"
   },
   "dependencies": {
     "@better-auth/api-key": "1.7.6",
