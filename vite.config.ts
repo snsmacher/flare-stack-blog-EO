@@ -32,6 +32,9 @@ function bakeSecretsForSsr(): Plugin {
       define[`process.env.${name}`] = JSON.stringify(value);
     }
   }
+  console.log(
+    `[bake-probe] present=[${names.filter((n) => process.env[n] !== undefined).join(",")}] missing=[${names.filter((n) => process.env[n] === undefined).join(",")}]`,
+  );
   return {
     name: "bake-secrets-for-ssr",
     configEnvironment(name) {
