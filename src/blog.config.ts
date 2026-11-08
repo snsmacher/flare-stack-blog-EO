@@ -12,7 +12,8 @@ export const blogConfig = {
   ],
   navLinks: [],
   icons: {
-    faviconSvg: "/favicon.svg",
+    // 留空 = 不声明 SVG 图标，浏览器走下面的多尺寸 ICO / PNG
+    faviconSvg: "",
     faviconIco: "/favicon.ico",
     favicon96: "/favicon-96x96.png",
     appleTouchIcon: "/apple-touch-icon.png",

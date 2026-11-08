@@ -1,75 +1,77 @@
+#!/usr/bin/env node
+/**
+ * 从原始插画生成整站图标（方案 B：原图直接缩放，最忠实）。
+ *
+ *   node scripts/build-favicon.mjs [源图路径]
+ *
+ * 产出 public/ 下：
+ *   favicon.ico（内嵌 16/32/48 三档 PNG）
+ *   favicon-96x96.png / apple-touch-icon.png / web-app-manifest-192|512.png
+ *
+ * 注意：favicon.svg 不由本脚本产出，也不在 head 里声明，
+ * 避免浏览器优先取 SVG 盖掉更清晰的位图。
+ */
 import sharp from "sharp";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+const SRC = process.argv[2] ?? "C:/迅雷下载/b_0bf911c44e878ec50d32c1905811ae0a.png";
 const PUB = "public";
-const svg = await fs.readFile(path.join(PUB, "favicon.svg"));
-const BG = "#1B9FE0";
 
-const render = (size, flatten = false) => {
-  let img = sharp(svg, { density: 384 }).resize(size, size);
-  if (flatten) img = img.flatten({ background: BG });
-  return img.png({ compressionLevel: 9 }).toBuffer();
-};
+// 与矢量描摹相同的裁切，保证两种方案构图一致
+const CROP = { left: 64, top: 113, width: 513, height: 513 };
 
-// 透明圆角版（浏览器标签页用）
-await fs.writeFile(path.join(PUB, "favicon-96x96.png"), await render(96));
+const at = (size) =>
+  sharp(SRC)
+    .extract(CROP)
+    .resize(size, size, { kernel: "lanczos3" })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
 
-// 实底版（iOS / PWA 不支持透明）
-await fs.writeFile(path.join(PUB, "apple-touch-icon.png"), await render(180, true));
-await fs.writeFile(path.join(PUB, "web-app-manifest-192x192.png"), await render(192, true));
-await fs.writeFile(path.join(PUB, "web-app-manifest-512x512.png"), await render(512, true));
+await fs.writeFile(path.join(PUB, "favicon-96x96.png"), await at(96));
+await fs.writeFile(path.join(PUB, "apple-touch-icon.png"), await at(180));
+await fs.writeFile(path.join(PUB, "web-app-manifest-192x192.png"), await at(192));
+await fs.writeFile(path.join(PUB, "web-app-manifest-512x512.png"), await at(512));
 
-// --- 手写 ICO（PNG 内嵌，Vista+ 支持）---
+// --- ICO：多尺寸内嵌 PNG（Vista+ 全支持）---
 const icoSizes = [16, 32, 48];
 const pngs = [];
-for (const s of icoSizes) pngs.push({ size: s, buf: await render(s) });
+for (const s of icoSizes) pngs.push({ size: s, buf: await at(s) });
 
 const header = Buffer.alloc(6);
-header.writeUInt16LE(0, 0); // reserved
-header.writeUInt16LE(1, 2); // type = icon
+header.writeUInt16LE(0, 0);
+header.writeUInt16LE(1, 2);
 header.writeUInt16LE(pngs.length, 4);
 
 const dirs = [];
 let offset = 6 + 16 * pngs.length;
 for (const p of pngs) {
   const d = Buffer.alloc(16);
-  d.writeUInt8(p.size >= 256 ? 0 : p.size, 0); // width
-  d.writeUInt8(p.size >= 256 ? 0 : p.size, 1); // height
-  d.writeUInt8(0, 2); // palette
-  d.writeUInt8(0, 3); // reserved
-  d.writeUInt16LE(1, 4); // planes
-  d.writeUInt16LE(32, 6); // bpp
+  d.writeUInt8(p.size >= 256 ? 0 : p.size, 0);
+  d.writeUInt8(p.size >= 256 ? 0 : p.size, 1);
+  d.writeUInt8(0, 2);
+  d.writeUInt8(0, 3);
+  d.writeUInt16LE(1, 4);
+  d.writeUInt16LE(32, 6);
   d.writeUInt32LE(p.buf.length, 8);
   d.writeUInt32LE(offset, 12);
   offset += p.buf.length;
   dirs.push(d);
 }
-await fs.writeFile(path.join(PUB, "favicon.ico"), Buffer.concat([header, ...dirs, ...pngs.map((p) => p.buf)]));
+await fs.writeFile(
+  path.join(PUB, "favicon.ico"),
+  Buffer.concat([header, ...dirs, ...pngs.map((p) => p.buf)]),
+);
 
-// --- 对比预览图（放大 16/32 实际像素）---
-const sheetParts = [];
-const items = [
-  { size: 16, label: "16" },
-  { size: 32, label: "32" },
-  { size: 48, label: "48" },
-  { size: 128, label: "128" },
+const files = [
+  "favicon.ico",
+  "favicon-96x96.png",
+  "apple-touch-icon.png",
+  "web-app-manifest-192x192.png",
+  "web-app-manifest-512x512.png",
 ];
-let x = 16;
-for (const it of items) {
-  const b = await render(it.size);
-  sheetParts.push({ input: b, left: x, top: 24 });
-  x += it.size + 24;
-}
-const totalW = x + 8;
-const light = await sharp({ create: { width: totalW, height: 180, channels: 4, background: "#f2f3f5" } })
-  .composite(sheetParts)
-  .png()
-  .toBuffer();
-await fs.writeFile("tmp-icon-preview.png", light);
-
-console.log("图标已生成");
-for (const f of ["favicon.svg", "favicon.ico", "favicon-96x96.png", "apple-touch-icon.png", "web-app-manifest-192x192.png", "web-app-manifest-512x512.png"]) {
+console.log("图标已生成（原图栅格版，ICO 内嵌 16/32/48）");
+for (const f of files) {
   const st = await fs.stat(path.join(PUB, f));
-  console.log(" ", f, st.size + "B");
+  console.log("  ", f, st.size + "B");
 }

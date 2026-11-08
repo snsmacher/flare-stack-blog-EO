@@ -63,11 +63,16 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         },
       ],
       links: [
-        {
-          rel: "icon",
-          type: "image/svg+xml",
-          href: loaderData?.siteConfig?.icons.faviconSvg,
-        },
+        // 只有配置了 SVG 图标才声明，否则浏览器会优先选 SVG、盖掉更清晰的 ICO/PNG
+        ...(loaderData?.siteConfig?.icons.faviconSvg
+          ? [
+              {
+                rel: "icon",
+                type: "image/svg+xml",
+                href: loaderData.siteConfig.icons.faviconSvg,
+              },
+            ]
+          : []),
         {
           rel: "icon",
           type: "image/png",

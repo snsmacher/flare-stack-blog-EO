@@ -16,7 +16,8 @@ if (!url) {
 }
 
 const STATIC_ICONS = {
-  faviconSvg: "/favicon.svg",
+  // 留空：head 里不再声明 SVG 图标，让浏览器直接用多尺寸 ICO / PNG
+  faviconSvg: "",
   faviconIco: "/favicon.ico",
   favicon96: "/favicon-96x96.png",
   appleTouchIcon: "/apple-touch-icon.png",

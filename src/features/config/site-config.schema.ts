@@ -205,7 +205,9 @@ export const FullSiteConfigSchema = z.object({
   social: z.array(SocialLinkSchema),
   navLinks: z.array(NavLinkSchema).max(NAV_LINKS_MAX),
   icons: z.object({
-    faviconSvg: createAssetPathSchema(),
+    // 允许为空：留空表示不声明 SVG 图标（例如只用多尺寸 ICO/PNG 时），
+    // 否则浏览器会优先取 SVG，压掉更清晰的位图。
+    faviconSvg: createOptionalAssetPathSchema(),
     faviconIco: createAssetPathSchema(),
     favicon96: createAssetPathSchema(),
     appleTouchIcon: createAssetPathSchema(),
