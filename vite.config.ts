@@ -34,6 +34,10 @@ function bakeSecretsForSsr(): Plugin {
     "UMAMI_API_KEY",
     "UMAMI_USERNAME",
     "UMAMI_PASSWORD",
+    // 更新检查同理：不烘焙就只剩下运行时 process.env 一条路，
+    // 容器刚起来那次往往是空的，维护页会一直报检查失败。
+    "UPDATE_CHECK_REPO",
+    "GITHUB_TOKEN",
   ];
   const define: Record<string, string> = {};
   for (const name of names) {

@@ -11,6 +11,11 @@
 - GitHub Actions 自动发版（`.github/workflows/release.yml`）：推 `main` 时若 `package.json` 的版本还没有对应 tag，自动打 `vX.Y.Z` 并按本文件创建 Release；只改代码不动版本号不会重复发版
 - `scripts/release-notes.mjs`：从本文件截取某一版作为发行说明，缺条目或条目为空时直接失败，不会发出空白 Release
 
+### 修复
+
+- `UPDATE_CHECK_REPO` / `GITHUB_TOKEN` 之前没进构建期烘焙名单，在 EdgeOne 控制台配了也可能读不到（容器启动时 `process.env` 为空），维护页只会报检查失败
+- `/diag?k=` 的键名清单补上这两个变量，方便排查
+
 ## [1.0.0] - 2026-11-08
 
 独立发行线的起点，对应上游 `3.10.0`。相对上游：运行时与数据层整体替换，中文搜索重写，并清掉只对 Cloudflare 有意义的产物。

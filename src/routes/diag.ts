@@ -32,6 +32,8 @@ const ENV_KEYS = [
   "UMAMI_API_KEY",
   "UMAMI_USERNAME",
   "UMAMI_PASSWORD",
+  "UPDATE_CHECK_REPO",
+  "GITHUB_TOKEN",
   "NODE_ENV",
 ] as const;
 
