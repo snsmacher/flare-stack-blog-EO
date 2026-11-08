@@ -37,7 +37,9 @@ const ENV_KEYS = [
 
 function describe(value: unknown): string {
   if (value === undefined || value === null || value === "") return "MISSING";
-  const s = String(value);
+  // Env values are strings; anything else is a binding this probe cannot read.
+  if (typeof value !== "string") return "set(non-string)";
+  const s = value;
   // Never echo values; only length + a safe host hint for URLs.
   if (s.startsWith("postgres")) {
     try {

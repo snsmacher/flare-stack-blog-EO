@@ -2,6 +2,7 @@ import { inArray, isNotNull } from "drizzle-orm";
 import * as PublicAssignmentRepo from "@/features/posts/data/public-assignments.data";
 import { convertToPlainText } from "@/features/posts/utils/content";
 import * as SearchRepo from "@/features/search/data/search.data";
+import { getSearchIndex, matchSearchIndex } from "@/features/search/engine";
 import {
   CONTENT_SLICE,
   SNIPPET_SLICE,
@@ -11,11 +12,7 @@ import type {
   SearchQueryInput,
   UpsertSearchDocInput,
 } from "@/features/search/search.schema";
-import {
-  queryTerms,
-  toFtsMatchQuery,
-  tokenizeForSearch,
-} from "@/features/search/tokenize";
+import { queryTerms, tokenizeForSearch } from "@/features/search/tokenize";
 import { buildSnippet } from "@/features/search/utils/search.utils";
 import { PostsTable } from "@/lib/db/schema";
 
@@ -49,15 +46,9 @@ function toIndexedDocument(
 }
 
 export async function search(context: DbContext, data: SearchQueryInput) {
-  const match = toFtsMatchQuery(data.q);
-  if (!match) return [];
-
-  const rows = await SearchRepo.matchSearchDocuments(
-    context.db,
-    match,
-    Math.min(data.limit, 25),
-  );
-  const terms = queryTerms(data.q);
+  const index = await getSearchIndex(context.db);
+  const rows = matchSearchIndex(index, data.q, Math.min(data.limit, 25));
+  const terms = [data.q.trim(), ...queryTerms(data.q)];
 
   return rows.map((row) => ({
     post: {

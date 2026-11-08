@@ -34,8 +34,15 @@ export function buildSnippet({
   const source = text?.trim() ?? "";
   if (source.length === 0) return null;
 
-  const activeTerms =
-    terms.length > 0 ? terms : fallbackTerm ? [fallbackTerm] : [];
+  // Longest first: the regex alternation then matches 「中国银行」 before it can
+  // settle for 「中国」, and the word list never shadows the query it came from.
+  const activeTerms = [
+    ...new Set(
+      (terms.length > 0 ? terms : fallbackTerm ? [fallbackTerm] : []).filter(
+        (term) => term.trim().length > 0,
+      ),
+    ),
+  ].sort((a, b) => b.length - a.length);
 
   if (activeTerms.length === 0) {
     return escapeHtml(source.slice(0, snippetSlice));

@@ -122,45 +122,30 @@ export async function replaceSearchDocuments(
   await bumpSearchIndexVersion(db);
 }
 
-export async function matchSearchDocuments(
+/**
+ * Every document in the index, oldest Post first. Read in one query, because
+ * the search engine keeps them in memory and only reloads when the index
+ * version moves (see `search/engine.ts`); searching narrows this set in the
+ * process rather than in the database.
+ */
+export async function readSearchDocuments(
   db: DB,
-  match: string,
-  limit: number,
 ): Promise<SearchDocumentRow[]> {
-  // Raw SQL because the tsvector match has no Drizzle equivalent. `tokens` is
-  // already a space-joined, lower-cased word list built with `Intl.Segmenter`,
-  // which is why the `simple` dictionary is the right one: it splits on
-  // whitespace and does no stemming or stop-word removal, so the segmentation
-  // the app already did survives. A GIN index on the same expression backs it.
-  //
-  // `websearch_to_tsquery` rather than `to_tsquery`: the latter only accepts
-  // terms joined by `&`/`|`, so the space-separated list `toFtsMatchQuery`
-  // produces raised `syntax error in tsquery` (42601) on every query with two
-  // or more words — which is nearly every Chinese one. The websearch syntax
-  // reads bare terms as AND, and never fails on user input.
-  const result = await db.$client.query<{
-    postId: number;
-    slug: string;
-    title: string;
-    summary: string;
-    content: string;
-    tags: string[] | string;
-  }>(
-    `SELECT d.post_id AS "postId", d.slug, d.title, d.summary, d.content, d.tags
-       FROM search_documents d
-      WHERE to_tsvector('simple', d.tokens) @@ websearch_to_tsquery('simple', $1)
-      ORDER BY ts_rank(to_tsvector('simple', d.tokens), websearch_to_tsquery('simple', $1)) DESC
-      LIMIT $2`,
-    [match, limit],
-  );
+  const rows = await db
+    .select({
+      postId: SearchDocumentsTable.postId,
+      slug: SearchDocumentsTable.slug,
+      title: SearchDocumentsTable.title,
+      summary: SearchDocumentsTable.summary,
+      content: SearchDocumentsTable.content,
+      tags: SearchDocumentsTable.tags,
+    })
+    .from(SearchDocumentsTable)
+    .orderBy(SearchDocumentsTable.postId);
 
-  return result.rows.map((row) => ({
-    postId: row.postId,
-    slug: row.slug,
-    title: row.title,
-    summary: row.summary,
-    content: row.content,
-    tags: Array.isArray(row.tags) ? row.tags : parseTags(row.tags),
+  return rows.map((row) => ({
+    ...row,
+    tags: Array.isArray(row.tags) ? row.tags : [],
   }));
 }
 
@@ -174,7 +159,11 @@ export async function readSearchIndexVersion(db: DB) {
 }
 
 async function bumpSearchIndexVersion(db: DB) {
-  const version = Date.now().toString();
+  // Unique, not just a timestamp: the version is what tells a running instance
+  // its in-memory index is stale, so two writes inside the same millisecond
+  // must still produce two different versions — otherwise the second one
+  // leaves every instance serving the index from before the first.
+  const version = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   await db
     .insert(SearchIndexMetaTable)
     .values({ id: 1, version })
@@ -182,17 +171,4 @@ async function bumpSearchIndexVersion(db: DB) {
       target: SearchIndexMetaTable.id,
       set: { version },
     });
-}
-
-function parseTags(raw: string) {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (
-      Array.isArray(parsed) &&
-      parsed.every((item) => typeof item === "string")
-    ) {
-      return parsed;
-    }
-  } catch {}
-  return [];
 }

@@ -158,7 +158,7 @@ export function withRateLimit(options: RateLimitOptions & { key?: string }) {
 
       for (const bucket of buckets) {
         const rateLimiter = await getRateLimiter(bucket.name);
-        const result = await rateLimiter.checkLimit(bucket.limit);
+        const result = rateLimiter.checkLimit(bucket.limit);
         if (!result.allowed) {
           throw errors.RATE_LIMITED({
             data: { retryAfterMs: result.retryAfterMs },

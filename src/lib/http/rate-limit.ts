@@ -9,7 +9,7 @@ export async function enforceIpRateLimit(
   const ip = rateLimitKeyFromIp(request.headers.get("cf-connecting-ip"));
   const uniqueIdentifier = `${ip}:${options.key}`;
   const rateLimiter = await getRateLimiter(uniqueIdentifier);
-  const result = await rateLimiter.checkLimit({
+  const result = rateLimiter.checkLimit({
     capacity: options.capacity,
     interval: options.interval,
   });

@@ -29,7 +29,7 @@ async function checkEmailRateLimit(
 ): Promise<{ allowed: boolean; retryAfterMs: number }> {
   const identifier = `${scope}:${email.toLowerCase().trim()}`;
   const rateLimiter = await getRateLimiter(identifier);
-  const { allowed, retryAfterMs } = await rateLimiter.checkLimit({
+  const { allowed, retryAfterMs } = rateLimiter.checkLimit({
     capacity: 5,
     interval: "1h",
   });

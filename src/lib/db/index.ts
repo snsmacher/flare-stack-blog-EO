@@ -42,12 +42,16 @@ function createDb() {
    * the better-sqlite3 shim this replaced, a failure midway really does roll
    * back — the callers rely on that.
    */
+  // oxlint-disable-next-line typescript/no-explicit-any -- D1 typed batch results `any[]`; callers still index into them.
   const batch = async (queries: readonly unknown[]): Promise<any[]> => {
     const client: PoolClient = await pool.connect();
     try {
       await client.query("begin");
+      // oxlint-disable-next-line typescript/no-explicit-any -- one row array per statement, as D1 returned them.
       const results: any[] = [];
-      for (const query of queries as { toSQL: () => { sql: string; params: unknown[] } }[]) {
+      for (const query of queries as {
+        toSQL: () => { sql: string; params: unknown[] };
+      }[]) {
         const { sql: text, params } = query.toSQL();
         const result = await client.query(text, params);
         results.push(result.rows);
