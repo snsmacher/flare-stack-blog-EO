@@ -1,4 +1,4 @@
-# 砂墨博客 · EdgeOne 版
+# Flare-Stack-Blog · EdgeOne 版
 
 线上地址：<https://blog.765528.xyz>
 
