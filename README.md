@@ -4,7 +4,7 @@
 
 [Flare-Stack-Blog](https://github.com/du2333/flare-stack-blog) 的 EdgeOne 运行时版本。领域模型、后台功能、HTTP API 契约都沿用上游，换掉的是跑在哪、数据存哪：Cloudflare Workers → 腾讯云 EdgeOne Makers，D1 → PostgreSQL。这个仓库就是线上站的全部源码，推 `main` 就构建上线。
 
-本仓库有自己的版本线与 [CHANGELOG](./CHANGELOG.md)，与上游没有共同提交历史，如果上游进行改动，您想第一时间体验的话，可以按照下文跟进上游来进行移植，我们也会在稍后后进行跟进
+本仓库有自己的版本线与 [CHANGELOG](./CHANGELOG.md)，与上游没有共同提交历史。如果上游有改动，您想第一时间体验的话，可以按照下文「跟进上游」自行移植；我们也会在稍后进行跟进。
 
 ## 功能
 
@@ -199,6 +199,7 @@ git checkout v3.11.0 -- src/features/posts/components/...
 - **通知派发**：没有队列服务，邮件与 Webhook 目前只在同步路径上触发，需要补一条可靠重试
 - **搜索换引擎**：文章量级上来后切 `pg_trgm`，接口保持不变
 - **后台 Agent Skill 页**：现在指向的安装地址还属于上游仓库，要改成对本仓库的发布物，或者先隐藏
+- **更新检查的未启用提示**：没配 `UPDATE_CHECK_REPO` 时，维护页点「检查」只报一句「检查失败」，应该直接说没启用
 - **图片变体**：按需裁剪，替代上传期预生成
 
 ## 已知限制
