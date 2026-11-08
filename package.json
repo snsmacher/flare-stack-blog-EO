@@ -1,8 +1,9 @@
 {
-  "name": "flare-stack-blog",
-  "version": "3.10.0",
+  "name": "flare-stack-blog-eo",
+  "version": "1.0.0",
   "private": true,
   "license": "GPL-3.0-only",
+  "homepage": "https://blog.765528.xyz",
   "author": {
     "name": "akuang",
     "email": "kuangdadu@gmail.com",

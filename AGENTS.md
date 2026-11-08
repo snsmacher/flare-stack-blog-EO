@@ -4,7 +4,9 @@
 
 ## 这个仓库是什么
 
-[du2333/flare-stack-blog](https://github.com/du2333/flare-stack-blog) 3.10.0 的移植版，跑在 EdgeOne Makers + PostgreSQL 上。**与上游没有共同提交历史**，`git merge upstream` 必然失败；取上游改动的方式见 `README.md` 的「从上游取改动」。
+Flare-Stack-Blog-EO（<https://blog.765528.xyz>）的全部源码：TanStack Start SSR 单体，跑在 EdgeOne Makers + PostgreSQL 上。版本线从这里自己的 `1.0.0` 起算，改动记录在 `CHANGELOG.md`。
+
+代码起点是 [du2333/flare-stack-blog](https://github.com/du2333/flare-stack-blog) 3.10.0，但**与它没有共同提交历史**，`git merge upstream` 必然失败，也不再尝试。上游代码只作参考：表现层和组织方式还能看，`src/lib/db`、`migrations`、`src/lib/env`、`cloudflare.config.ts`、`src/lib/queue` 已经各走各的。
 
 ## 动这些地方之前先停一下
 
@@ -29,5 +31,7 @@ bun run lint && bun run typecheck && bun run test:node
 ## 提交
 
 pre-commit 跑 `oxlint` 全仓，pre-push 跑 `typecheck` + `build` + `test:node`。别跳钩子，钩子挂掉通常是真问题（例如缓存头断言、类型漂移）。
+
+功能或修复上线时，`package.json` 的版本号与 `CHANGELOG.md` 要一起更新；架构层面的取舍写进 `docs/adr/`，编号递增不复用。
 
 推到 `main` 会直接触发 EdgeOne 构建并上线。

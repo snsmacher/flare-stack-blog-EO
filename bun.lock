@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "flare-stack-blog",
+      "name": "flare-stack-blog-eo",
       "dependencies": {
         "@better-auth/api-key": "1.7.6",
         "@better-auth/core": "1.7.6",

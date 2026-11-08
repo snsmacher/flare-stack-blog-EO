@@ -22,6 +22,9 @@ const serverEnvSchema = z.object({
   UMAMI_PASSWORD: z.string().optional(),
   TURNSTILE_SECRET_KEY: z.string().optional(),
   GITHUB_TOKEN: z.string().optional(),
+  // "owner/repo"。填了才会去比对 release，不填就当作不做更新检查：
+  // 本仓库独立发版，上游 3.x 与这里 1.x 的版本号没有可比性。
+  UPDATE_CHECK_REPO: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

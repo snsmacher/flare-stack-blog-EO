@@ -1,6 +1,6 @@
-# Flare Stack Blog
+# Flare-Stack-Blog-EO
 
-Flare Stack Blog is a Cloudflare Workers-native blog CMS for publishing posts and managing site content.
+Flare-Stack-Blog-EO is a personal blog CMS running on EdgeOne Makers with PostgreSQL, for publishing posts and managing site content.
 
 ## Language
 

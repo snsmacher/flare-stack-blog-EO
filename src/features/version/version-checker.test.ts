@@ -218,8 +218,8 @@ describe("fetchLatestReleaseFromGitHub", () => {
     vi.unstubAllGlobals();
   });
 
-  const RELEASE_PAGE =
-    "https://github.com/du2333/flare-stack-blog/releases/latest";
+  const REPO = "du2333/flare-stack-blog";
+  const RELEASE_PAGE = `https://github.com/${REPO}/releases/latest`;
 
   function redirectToTag(tag: string) {
     return new Response(null, {
@@ -234,7 +234,7 @@ describe("fetchLatestReleaseFromGitHub", () => {
     const fetch = vi.fn(async () => redirectToTag("v3.1.2"));
     vi.stubGlobal("fetch", fetch);
 
-    await expect(fetchLatestReleaseFromGitHub(undefined)).resolves.toEqual(
+    await expect(fetchLatestReleaseFromGitHub(undefined, REPO)).resolves.toEqual(
       release("v3.1.2"),
     );
     expect(fetch).toHaveBeenCalledOnce();
@@ -254,7 +254,7 @@ describe("fetchLatestReleaseFromGitHub", () => {
     );
     vi.stubGlobal("fetch", fetch);
 
-    await expect(fetchLatestReleaseFromGitHub("token")).resolves.toEqual(
+    await expect(fetchLatestReleaseFromGitHub("token", REPO)).resolves.toEqual(
       release("v3.1.2"),
     );
     expect(fetch).toHaveBeenCalledOnce();
@@ -267,7 +267,7 @@ describe("fetchLatestReleaseFromGitHub", () => {
       .mockResolvedValueOnce(redirectToTag("v3.1.2"));
     vi.stubGlobal("fetch", fetch);
 
-    await expect(fetchLatestReleaseFromGitHub("token")).resolves.toEqual(
+    await expect(fetchLatestReleaseFromGitHub("token", REPO)).resolves.toEqual(
       release("v3.1.2"),
     );
     expect(fetch).toHaveBeenLastCalledWith(RELEASE_PAGE, expect.anything());
@@ -279,6 +279,6 @@ describe("fetchLatestReleaseFromGitHub", () => {
       vi.fn(async () => new Response("", { status: 429 })),
     );
 
-    await expect(fetchLatestReleaseFromGitHub(undefined)).rejects.toThrow();
+    await expect(fetchLatestReleaseFromGitHub(undefined, REPO)).rejects.toThrow();
   });
 });
