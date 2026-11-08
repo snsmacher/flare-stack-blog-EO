@@ -4,6 +4,13 @@
 
 版本号语义化：`MAJOR` 表示数据层或运行时换了（需要迁移/重新配置），`MINOR` 表示加功能，`PATCH` 表示修 bug 与内部整理。
 
+## [未发布]
+
+### 新增
+
+- GitHub Actions 自动发版（`.github/workflows/release.yml`）：推 `main` 时若 `package.json` 的版本还没有对应 tag，自动打 `vX.Y.Z` 并按本文件创建 Release；只改代码不动版本号不会重复发版
+- `scripts/release-notes.mjs`：从本文件截取某一版作为发行说明，缺条目或条目为空时直接失败，不会发出空白 Release
+
 ## [1.0.0] - 2026-11-08
 
 独立发行线的起点，对应上游 `3.10.0`。相对上游：运行时与数据层整体替换，中文搜索重写，并清掉只对 Cloudflare 有意义的产物。

@@ -1,0 +1,156 @@
+name: Release
+
+# 发版流程（见 README「版本与发布」）：
+#   改 package.json 版本 → CHANGELOG 开一节 → 推 main
+#   → 本工作流发现版本还没有 tag，就打 vX.Y.Z 并创建 Release，正文取自 CHANGELOG
+# 只改代码不动版本号时，tag 已存在，工作流秒退。
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要补发或重发的 tag，例如 v1.0.0（必须已存在）"
+        required: true
+        type: string
+      prerelease:
+        description: "标记为预发行版"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出（需要完整历史来找上一个 tag）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 解析版本与 tag
+        id: ver
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            TAG="$INPUT_TAG"
+          elif [ "$REF_TYPE" = "tag" ]; then
+            TAG="$REF_NAME"
+          else
+            TAG="v$(node -p "require('./package.json').version")"
+          fi
+          case "$TAG" in
+            v[0-9]*) ;;
+            *)
+              echo "::error::tag 必须形如 v1.0.0，收到 $TAG"
+              exit 1
+              ;;
+          esac
+          VERSION="${TAG#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$PKG_VERSION" ]; then
+            if [ "$REF_TYPE" = "tag" ]; then
+              echo "::error::tag 是 $TAG，但 package.json 是 $PKG_VERSION；先统一版本号再发版"
+              exit 1
+            fi
+            echo "::warning::补发历史版本 $TAG，当前 package.json 已是 $PKG_VERSION"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "已解析：tag=$TAG version=$VERSION"
+
+      - name: 判断 tag 与 Release 是否已存在
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # tag 决定要不要新建；Release 才是「已经发过」的判据——tag 推送触发时 tag 必然存在
+          if git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
+            echo "tag $TAG 已存在"
+          else
+            echo "tag_exists=false" >> "$GITHUB_OUTPUT"
+            echo "tag $TAG 待创建"
+          fi
+
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "release_exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release $TAG 已存在，跳过"
+          else
+            echo "release_exists=false" >> "$GITHUB_OUTPUT"
+            echo "Release $TAG 待创建"
+          fi
+
+      - name: 打 tag
+        if: steps.gate.outputs.tag_exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$TAG" \
+            -f sha="$GITHUB_SHA" \
+            --silent
+
+      - name: 从 CHANGELOG 生成发行说明
+        if: steps.gate.outputs.release_exists == 'false'
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: node scripts/release-notes.mjs "$VERSION" --out release-notes.md
+
+      - name: 创建 Release
+        if: steps.gate.outputs.release_exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          PRERELEASE_INPUT: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          # 主分支触发时 tag 是刚用 API 建的，本地还没有，退回 HEAD^ 算上一个 tag
+          BASE="${TAG}^"
+          git rev-parse -q --verify "$BASE" > /dev/null || BASE="HEAD^"
+          PREV="$(git describe --tags --abbrev=0 "$BASE" 2>/dev/null || true)"
+          {
+            cat release-notes.md
+            echo
+            echo "---"
+            echo
+            echo "完整记录见 [CHANGELOG.md](https://github.com/$GITHUB_REPOSITORY/blob/main/CHANGELOG.md)。"
+            if [ -n "$PREV" ]; then
+              echo ""
+              echo "逐行对比：https://github.com/$GITHUB_REPOSITORY/compare/$PREV...$TAG"
+            fi
+          } > release-body.md
+
+          ARGS=()
+          if printf '%s' "$VERSION" | grep -q '-' || [ "$PRERELEASE_INPUT" = "true" ]; then
+            ARGS+=(--prerelease)
+          fi
+
+          gh release create "$TAG" \
+            --verify-tag \
+            --title "$TAG" \
+            --notes-file release-body.md \
+            "${ARGS[@]}"
+          echo "已发布 $TAG"

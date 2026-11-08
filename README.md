@@ -186,7 +186,10 @@ git checkout v3.11.0 -- src/features/posts/components/...
 - 本仓库独立发版，当前 `1.0.0`，对应上游 `3.10.0`。版本号唯一来源是 `package.json`，构建时注入为 `__APP_VERSION__`（后台页脚、OpenAPI 文档、更新检查都读它）
 - 版本号只表示这套部署自身的变化幅度：换运行时或改数据层是大版本，加功能是次版本，修 bug 是补丁版本；与上游版本号的对应关系写在 CHANGELOG 里
 - 节奏：修 bug 当天发 patch，功能攒到手头这一批做完就发 minor，不排固定档期，也不攒大版本
-- 每次上线：改版本 → 在 [CHANGELOG.md](./CHANGELOG.md) 加一条 → 提交 → 推 `main` → 构建成功后打 `vX.Y.Z` tag
+- 每次上线：改 `package.json` 版本 → 在 [CHANGELOG.md](./CHANGELOG.md) 开一节（`## [X.Y.Z] - 日期`）→ 提交 → 推 `main`
+- 推到 `main` 会同时触发两件事：EdgeOne 自动构建上线；[`.github/workflows/release.yml`](./.github/workflows/release.yml) 发现该版本还没有 tag，就打 `vX.Y.Z` 并把 CHANGELOG 那一节原样作为 Release 正文。只改代码没动版本号时 tag 已存在，发版任务直接跳过
+- CHANGELOG 缺条目、或者那一节是空的，发版会失败。这是故意的：宁可红一次，也不发一个没有内容的 Release
+- 补发或重发旧版本：Actions 里手动跑 `Release`，填 tag 即可；版本号带 `-`（如 `1.1.0-rc.1`）会自动标为 Pre-release
 - 单人项目，`main` 直推，不设长期分支；钩子会拦住 lint、类型、构建、单测四道关
 - 架构层面的决定写进 `docs/adr/`，编号递增，不复用
 
