@@ -1,0 +1,300 @@
+#!/usr/bin/env node
+/**
+ * Postgres → Postgres 结构与数据克隆（源库 → 目标库）。
+ *
+ * 用法：
+ *   SOURCE_DATABASE_URL="postgresql://..." TARGET_DATABASE_URL="postgresql://..." \
+ *     node scripts/pg-clone.mjs [--schema-only] [--data-only]
+ *
+ * 特点：
+ * - 从源库 catalog 生成 DDL（表 / 主键 / 唯一 / 外键 / 普通索引 / 序列），不依赖 pg_dump；
+ * - 目标库已存在的对象用 IF NOT EXISTS 跳过；
+ * - 数据按外键拓扑序写入，冲突行忽略（--replace 则先清空目标表）；
+ * - 结束时对齐 sequence 值。
+ */
+import pg from "pg";
+
+const args = new Set(process.argv.slice(2));
+const SCHEMA_ONLY = args.has("--schema-only");
+const DATA_ONLY = args.has("--data-only");
+const REPLACE = args.has("--replace");
+const DRY = args.has("--dry-run");
+
+const SRC = process.env.SOURCE_DATABASE_URL;
+const DST = process.env.TARGET_DATABASE_URL;
+if (!SRC || !DST) {
+  console.error("缺少 SOURCE_DATABASE_URL / TARGET_DATABASE_URL");
+  process.exit(1);
+}
+if (SRC.trim() === DST.trim()) {
+  console.error("源库和目标库相同");
+  process.exit(1);
+}
+
+const mkPool = (url) =>
+  new pg.Pool({
+    connectionString: url,
+    max: 3,
+    ssl: url.includes("localhost") || url.includes("127.0.0.1") ? undefined : { rejectUnauthorized: false },
+    connectionTimeoutMillis: 20000,
+  });
+
+const src = mkPool(SRC);
+const dst = mkPool(DST);
+
+const q = async (pool, text, params) => (await pool.query(text, params)).rows;
+
+const TYPE_MAP = {
+  int2: "smallint", int4: "integer", int8: "bigint",
+  float4: "real", float8: "double precision", numeric: "numeric",
+  bool: "boolean", text: "text", varchar: "varchar", bpchar: "char",
+  timestamptz: "timestamptz", timestamp: "timestamp", date: "date", time: "time",
+  json: "json", jsonb: "jsonb", uuid: "uuid", bytea: "bytea", inet: "inet", citext: "citext",
+};
+
+function colType(r) {
+  const base = TYPE_MAP[r.udt_name] ?? r.udt_name;
+  if (r.character_maximum_length) return `${base}(${r.character_maximum_length})`;
+  if (r.udt_name === "numeric" && r.numeric_precision) {
+    return r.numeric_scale ? `numeric(${r.numeric_precision},${r.numeric_scale})` : `numeric(${r.numeric_precision})`;
+  }
+  return base;
+}
+
+async function main() {
+  console.log("[1/5] 读取源库结构 …");
+  const srcVersion = await q(src, "select version() v");
+  console.log("  源:", srcVersion[0].v.split(" ").slice(0, 2).join(" "));
+  if (!DRY) {
+    const dstVersion = await q(dst, "select version() v");
+    console.log("  目标:", dstVersion[0].v.split(" ").slice(0, 2).join(" "));
+  }
+
+  const tables = await q(
+    src,
+    `select c.relname as name
+       from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'r'
+      order by c.relname`,
+  );
+  const tableNames = tables.map((t) => t.name);
+  console.log(`  表: ${tableNames.length} 个 → ${tableNames.join(", ")}`);
+
+  const cols = await q(
+    src,
+    `select table_name, column_name, ordinal_position, data_type, udt_name,
+            is_nullable, character_maximum_length, numeric_precision, numeric_scale,
+            column_default, is_identity, identity_generation, identity_start, identity_increment
+       from information_schema.columns
+      where table_schema = 'public'
+      order by table_name, ordinal_position`,
+  );
+  const byTable = new Map();
+  for (const c of cols) {
+    if (!byTable.has(c.table_name)) byTable.set(c.table_name, []);
+    byTable.get(c.table_name).push(c);
+  }
+
+  const seqs = await q(
+    src,
+    `select sequence_name, start_value, minimum_value, maximum_value, increment, cycle_option
+       from information_schema.sequences where sequence_schema = 'public'`,
+  );
+
+  const constraints = await q(
+    src,
+    `select con.conname as name, con.contype as type, rel.relname as tbl,
+            pg_get_constraintdef(con.oid) as def
+       from pg_constraint con
+       join pg_class rel on rel.oid = con.conrelid
+       join pg_namespace n on n.oid = rel.relnamespace
+      where n.nspname = 'public' and con.contype in ('p','u','f','c')
+      order by case con.contype when 'p' then 1 when 'u' then 2 when 'c' then 3 else 4 end, con.conname`,
+  );
+
+  const indexes = await q(
+    src,
+    `select i.indexname as name, i.indexdef as def
+       from pg_indexes i
+      where i.schemaname = 'public'
+        and not exists (
+          select 1 from pg_constraint con
+          join pg_class rel on rel.oid = con.conrelid
+          where rel.relname = i.tablename and con.conname = i.indexname
+        )`,
+  );
+
+  // ---- 生成 DDL ----
+  const ddl = [];
+  for (const s of seqs) {
+    ddl.push(
+      `create sequence if not exists public."${s.sequence_name}" start with ${s.start_value} increment by ${s.increment} minvalue ${s.minimum_value} maxvalue ${s.maximum_value}${s.cycle_option === "YES" ? " cycle" : " no cycle"};`,
+    );
+  }
+
+  for (const t of tableNames) {
+    const list = byTable.get(t) ?? [];
+    const defs = list.map((c) => {
+      const parts = [`"${c.column_name}"`, colType(c)];
+      if (c.is_identity === "YES") {
+        parts.push(`generated by default as identity`);
+      } else if (c.column_default !== null) {
+        parts.push(`default ${c.column_default}`);
+      }
+      if (c.is_nullable === "NO") parts.push("not null");
+      return "  " + parts.join(" ");
+    });
+    ddl.push(`create table if not exists public."${t}" (\n${defs.join(",\n")}\n);`);
+  }
+
+  // 主键 / 唯一 / check 先于外键
+  const pkUkCk = constraints.filter((c) => c.type !== "f");
+  const fks = constraints.filter((c) => c.type === "f");
+  for (const c of pkUkCk) {
+    ddl.push(`alter table only public."${c.tbl}" drop constraint if exists "${c.name}";`);
+    ddl.push(`alter table public."${c.tbl}" add constraint "${c.name}" ${c.def};`);
+  }
+  for (const c of fks) {
+    ddl.push(`alter table only public."${c.tbl}" drop constraint if exists "${c.name}";`);
+    ddl.push(`alter table public."${c.tbl}" add constraint "${c.name}" ${c.def};`);
+  }
+  for (const i of indexes) {
+    ddl.push(i.def.replace(/^CREATE (UNIQUE )?INDEX /i, (m0, uniq) => `CREATE ${uniq ?? ""}INDEX IF NOT EXISTS `) + ";");
+  }
+
+  if (args.has("--print-ddl")) {
+    console.log(ddl.join("\n"));
+  }
+
+  if (!DATA_ONLY) {
+    console.log("[2/5] 在目标库建表 …");
+    if (DRY) {
+      console.log("  (dry-run，跳过)");
+    } else {
+      for (const stmt of ddl) {
+        try {
+          await dst.query(stmt);
+        } catch (e) {
+          console.error("  DDL 失败:", stmt.slice(0, 120), "→", e.message);
+          throw e;
+        }
+      }
+      console.log(`  执行 ${ddl.length} 条 DDL`);
+    }
+  }
+
+  if (SCHEMA_ONLY) {
+    console.log("仅建结构，结束。");
+    return;
+  }
+
+  // ---- 拓扑排序（被引用的表先写）----
+  const deps = new Map(tableNames.map((t) => [t, new Set()]));
+  for (const f of fks) {
+    const m = f.def.match(/references\s+(?:"?public"?\.)?"?([^"\s(]+)"?/i);
+    if (m && m[1] !== f.tbl && deps.has(f.tbl)) deps.get(f.tbl).add(m[1]);
+  }
+  const ordered = [];
+  const state = new Map();
+  const visit = (t) => {
+    const s = state.get(t);
+    if (s === "done" || s === "visiting") return;
+    state.set(t, "visiting");
+    for (const d of deps.get(t) ?? []) visit(d);
+    state.set(t, "done");
+    ordered.push(t);
+  };
+  tableNames.forEach(visit);
+
+  if (REPLACE && !DRY) {
+    console.log("[3/5] 清空目标表 …");
+    for (const t of [...ordered].reverse()) {
+      try {
+        await dst.query(`delete from public."${t}"`);
+      } catch (e) {
+        console.log(`  跳过 ${t}: ${e.message}`);
+      }
+    }
+  }
+
+  console.log("[4/5] 复制数据 …");
+  for (const t of ordered) {
+    const list = (byTable.get(t) ?? []).map((c) => c.column_name);
+    const rows = await q(src, `select ${list.map((c) => `"${c}"`).join(", ")} from public.${quoteIdent(t)}`);
+    if (!rows.length) {
+      console.log(`  ${t}: 0 行`);
+      continue;
+    }
+    if (DRY) {
+      console.log(`  ${t}: ${rows.length} 行 (dry-run)`);
+      continue;
+    }
+
+    const BATCH = 200;
+    const colList = list.map((c) => `"${c}"`).join(", ");
+    let inserted = 0;
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const chunk = rows.slice(i, i + BATCH);
+      const values = [];
+      const placeholders = chunk.map((row) => {
+        const ph = list.map((c) => {
+          values.push(row[c]);
+          return `$${values.length}`;
+        });
+        return `(${ph.join(", ")})`;
+      });
+      const stmt = `insert into public.${quoteIdent(t)} (${colList}) values ${placeholders.join(", ")} on conflict do nothing`;
+      try {
+        const r = await dst.query(stmt, values);
+        inserted += r.rowCount;
+      } catch (e) {
+        console.error(`  ${t} 写入失败: ${e.message}`);
+        throw e;
+      }
+    }
+    console.log(`  ${t}: ${rows.length} 行读取 / ${inserted} 行写入`);
+  }
+
+  console.log("[5/5] 对齐序列 …");
+  for (const s of seqs) {
+    const own = await q(
+      src,
+      `select c.relname as tbl, a.attname as col
+         from pg_depend d
+         join pg_class c on c.oid = d.refobjid
+         join pg_attribute a on a.attrelid = c.oid and a.attnum = d.refobjsubid
+         join pg_class s on s.oid = d.objid
+        where s.relname = $1 and d.deptype in ('a','i') limit 1`,
+      [s.sequence_name],
+    );
+    if (!own.length) continue;
+    const { tbl, col } = own[0];
+    if (DRY) {
+      console.log(`  ${s.sequence_name} → ${tbl}.${col} (dry-run)`);
+      continue;
+    }
+    try {
+      await dst.query(
+        `select setval($1::regclass, coalesce((select max("${col}") from public.${quoteIdent(tbl)}), 1), (select max("${col}") is not null from public.${quoteIdent(tbl)}))`,
+        [`public.${s.sequence_name}`],
+      );
+      console.log(`  ${s.sequence_name} → ${tbl}.${col} 已对齐`);
+    } catch (e) {
+      console.log(`  ${s.sequence_name}: ${e.message}`);
+    }
+  }
+
+  console.log("\n完成。");
+}
+
+const quoteIdent = (x) => `"${String(x).replace(/"/g, '""')}"`;
+
+main()
+  .catch((e) => {
+    console.error("\n失败:", e.message);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await src.end().catch(() => {});
+    await dst.end().catch(() => {});
+  });
