@@ -4,12 +4,13 @@ import { sql } from "drizzle-orm";
 /**
  * `column` contains `term`, ignoring the case of ASCII letters as LIKE does.
  *
- * D1 refuses a LIKE pattern of more than 50 bytes, so a search word of about
- * seventeen Chinese characters failed with a 500. `instr` takes any length,
- * and needs no escaping of `%` and `_`.
+ * A LIKE pattern was capped at 50 bytes back on D1, so a search word of about
+ * seventeen Chinese characters failed with a 500; `strpos` takes any length
+ * and needs no escaping of `%` and `_`. (PostgreSQL spells `instr` as
+ * `strpos`, same argument order.)
  */
 export function containsText(column: SQLWrapper, term: string): SQL<boolean> {
-  return sql<boolean>`instr(lower(${column}), lower(${term})) > 0`;
+  return sql<boolean>`strpos(lower(${column}), lower(${term})) > 0`;
 }
 
 /**

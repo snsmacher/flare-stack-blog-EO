@@ -26,11 +26,13 @@ export function adminPostTextColumns(taxonomy?: AdminTaxonomyFilter) {
 }
 /**
  * A Published Post whose draft fingerprint differs from the one taken at
- * publishing. `IS NOT` compares nulls, but callers settle null fingerprints
- * first (see unpublished-changes.service).
+ * publishing. `IS DISTINCT FROM` compares nulls too (null vs value counts as
+ * a change, null vs null does not); callers settle null fingerprints first
+ * (see unpublished-changes.service). PostgreSQL has no `IS NOT <column>`
+ * form — that one is SQLite-only and fails to parse here.
  */
 export function unpublishedChangesSql(): SQL<boolean> {
-  return sql<boolean>`(${PostsTable.status} = 'published' AND ${PostsTable.draftFingerprint} IS NOT ${PostsTable.publishedFingerprint})`;
+  return sql<boolean>`(${PostsTable.status} = 'published' AND ${PostsTable.draftFingerprint} IS DISTINCT FROM ${PostsTable.publishedFingerprint})`;
 }
 function uncategorized(): SQL {
   return sql`${PostsTable.categoryId} IS NULL`;

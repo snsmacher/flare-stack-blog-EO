@@ -7,6 +7,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import packageJson from "./package.json";
+import { resolveDatabaseUrl } from "./src/lib/db/connection-target";
 import { routedFirstSegmentsPlugin } from "./scripts/vite-routed-segments.ts";
 
 // EdgeOne's Node cloud functions don't reliably receive console-set env vars
@@ -27,7 +28,12 @@ function bakeSecretsForSsr(): Plugin {
   ];
   const define: Record<string, string> = {};
   for (const name of names) {
-    const value = process.env[name];
+    // 数据库连接串走统一解析：控制台里还没改、或仍指着 Neon 时，构建期就换成
+    // 国内库，省掉一次人工改控制台 + 重新构建的往返。
+    const value =
+      name === "DATABASE_URL" || name === "DATABASE_URL_DIRECT"
+        ? resolveDatabaseUrl(process.env[name])
+        : process.env[name];
     if (value !== undefined) {
       define[`process.env.${name}`] = JSON.stringify(value);
     }

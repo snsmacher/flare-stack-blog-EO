@@ -6,7 +6,7 @@ const DEFAULT_PAGE_SIZE = 20;
 function searchCondition(search?: string) {
   const value = search?.trim().toLowerCase();
   if (!value) return undefined;
-  return sql`(instr(lower(${FriendLinksTable.siteName}), ${value}) > 0 or instr(lower(${FriendLinksTable.siteUrl}), ${value}) > 0)`;
+  return sql`(strpos(lower(${FriendLinksTable.siteName}), ${value}) > 0 or strpos(lower(${FriendLinksTable.siteUrl}), ${value}) > 0)`;
 }
 
 export async function insertFriendLink(

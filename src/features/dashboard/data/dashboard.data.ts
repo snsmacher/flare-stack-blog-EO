@@ -79,7 +79,9 @@ export async function countPublicComments(db: DB, since: Date) {
   const [row] = await db
     .select({
       total: count(),
-      recent: sql<number>`coalesce(sum(case when ${CommentsTable.createdAt} >= ${Math.floor(since.getTime() / 1000)} then 1 else 0 end), 0)`,
+      // `created_at` is timestamptz, so it compares against a Date, not
+      // against the integer seconds a SQLite column would have held.
+      recent: sql<number>`coalesce(sum(case when ${CommentsTable.createdAt} >= ${since} then 1 else 0 end), 0)`,
     })
     .from(CommentsTable)
     .innerJoin(PostsTable, eq(CommentsTable.postId, PostsTable.id))
@@ -206,8 +208,9 @@ export async function markUnrepliedCommentsHandled(db: DB, handledAt: Date) {
  * local day.
  */
 export async function countWritingEventsByHour(db: DB, since: Date) {
-  const revisionHour = sql<number>`${PostRevisionsTable.createdAt} / 3600`;
-  const postHour = sql<number>`${PostsTable.createdAt} / 3600`;
+  // timestamptz is not a number: take its epoch seconds first, then bucket.
+  const revisionHour = sql<number>`floor(extract(epoch from ${PostRevisionsTable.createdAt}) / 3600)`;
+  const postHour = sql<number>`floor(extract(epoch from ${PostsTable.createdAt}) / 3600)`;
   const [revisions, posts] = await Promise.all([
     db
       .select({ hour: revisionHour, count: count() })

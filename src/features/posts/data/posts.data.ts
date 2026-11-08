@@ -195,7 +195,8 @@ export async function getAdminPostStatusCounts(
     .select({
       status: PostsTable.status,
       count: count(),
-      unpublishedChanges: sql<number>`coalesce(sum(${unpublishedChangesSql()}), 0)`,
+      // PostgreSQL has no sum(boolean): count the matching rows instead.
+      unpublishedChanges: sql<number>`coalesce(count(*) filter (where ${unpublishedChangesSql()}), 0)`,
     })
     .from(PostsTable)
     .where(buildPostWhereClause(options))

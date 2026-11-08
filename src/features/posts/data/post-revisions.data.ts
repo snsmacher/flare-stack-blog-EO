@@ -203,7 +203,7 @@ export async function restorePostSnapshot(
     db
       .insert(PostRevisionsTable)
       .select(
-        sql`SELECT NULL, ${data.postId}, ${data.backupRevision.reason}, ${JSON.stringify(data.backupRevision.snapshotJson)}, ${data.backupRevision.snapshotHash}, ${data.backupRevision.restoredFromRevisionId ?? null}, unixepoch() WHERE ${restored}`,
+        sql`SELECT NULL, ${data.postId}, ${data.backupRevision.reason}, ${JSON.stringify(data.backupRevision.snapshotJson)}, ${data.backupRevision.snapshotHash}, ${data.backupRevision.restoredFromRevisionId ?? null}, now() WHERE ${restored}`,
       ),
     db
       .delete(PostTagsTable)

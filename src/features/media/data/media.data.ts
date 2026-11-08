@@ -14,7 +14,9 @@ export type Media = typeof MediaTable.$inferSelect;
 
 // An Admin's avatar picked from the media library is a reference, like a Post
 // image. Other users' avatar URLs are not, so they cannot pin media.
-const usedAsAdminAvatar = sql`exists (select 1 from ${user} where ${user.role} = 'admin' and instr(${user.image}, '/images/' || ${MediaTable.key}) > 0)`;
+// `strpos` is PostgreSQL's `instr`; a null image yields null, which `exists`
+// treats as false.
+const usedAsAdminAvatar = sql`exists (select 1 from ${user} where ${user.role} = 'admin' and strpos(${user.image}, '/images/' || ${MediaTable.key}) > 0)`;
 
 // A Post Revision's images count too, so restoring it never brings back a
 // deleted image.

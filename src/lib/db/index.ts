@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool, type PoolClient } from "pg";
+import { resolveDatabaseUrl } from "./connection-target";
 import * as schema from "./schema";
 
 export type DB = ReturnType<typeof createDb>;
@@ -21,12 +22,9 @@ function normalizeConnectionString(raw: string): string {
 }
 
 function createDb() {
-  const raw = process.env.DATABASE_URL;
-  if (!raw) {
-    throw new Error(
-      "DATABASE_URL is not set. Point it at the Postgres connection string before starting the app.",
-    );
-  }
+  // resolveDatabaseUrl 兜住两种情况：控制台没配变量，或变量还指在 Neon 上。
+  // 详见 ./connection-target.ts。
+  const raw = resolveDatabaseUrl(process.env.DATABASE_URL);
 
   const pool = new Pool({
     connectionString: normalizeConnectionString(raw),
