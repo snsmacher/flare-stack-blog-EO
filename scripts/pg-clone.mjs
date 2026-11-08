@@ -150,16 +150,42 @@ async function main() {
   // 主键 / 唯一 / check 先于外键
   const pkUkCk = constraints.filter((c) => c.type !== "f");
   const fks = constraints.filter((c) => c.type === "f");
+
+  // 目标库已有同名约束就跳过（重复执行幂等；不能 drop，外键会依赖主键）
+  const existing = new Set();
+  if (!DRY) {
+    const rows = await q(
+      dst,
+      `select con.conname as name, rel.relname as tbl
+         from pg_constraint con
+         join pg_class rel on rel.oid = con.conrelid
+         join pg_namespace n on n.oid = rel.relnamespace
+        where n.nspname = 'public'`,
+    );
+    for (const r of rows) existing.add(`${r.tbl}.${r.name}`);
+  }
+
   for (const c of pkUkCk) {
-    ddl.push(`alter table only public."${c.tbl}" drop constraint if exists "${c.name}";`);
+    if (existing.has(`${c.tbl}.${c.name}`)) continue;
     ddl.push(`alter table public."${c.tbl}" add constraint "${c.name}" ${c.def};`);
   }
   for (const c of fks) {
-    ddl.push(`alter table only public."${c.tbl}" drop constraint if exists "${c.name}";`);
+    if (existing.has(`${c.tbl}.${c.name}`)) continue;
     ddl.push(`alter table public."${c.tbl}" add constraint "${c.name}" ${c.def};`);
   }
+  const existingIdx = new Set();
+  if (!DRY) {
+    const rows = await q(
+      dst,
+      `select indexname from pg_indexes where schemaname = 'public'`,
+    );
+    for (const r of rows) existingIdx.add(r.indexname);
+  }
   for (const i of indexes) {
-    ddl.push(i.def.replace(/^CREATE (UNIQUE )?INDEX /i, (m0, uniq) => `CREATE ${uniq ?? ""}INDEX IF NOT EXISTS `) + ";");
+    if (existingIdx.has(i.name)) continue;
+    ddl.push(
+      i.def.replace(/^CREATE (UNIQUE )?INDEX /i, (m0, uniq) => `CREATE ${uniq ?? ""}INDEX IF NOT EXISTS `) + ";",
+    );
   }
 
   if (args.has("--print-ddl")) {
@@ -230,6 +256,14 @@ async function main() {
       continue;
     }
 
+    // json / jsonb 列必须自己 JSON.stringify 并显式转型：
+    // node-pg 遇到 JS 数组会序列化成 PG 数组字面量 {..}，而 jsonb 数组需要 [..]
+    const jsonCols = new Set(
+      (byTable.get(t) ?? [])
+        .filter((c) => c.udt_name === "json" || c.udt_name === "jsonb")
+        .map((c) => c.column_name),
+    );
+
     const BATCH = 200;
     const colList = list.map((c) => `"${c}"`).join(", ");
     let inserted = 0;
@@ -238,7 +272,12 @@ async function main() {
       const values = [];
       const placeholders = chunk.map((row) => {
         const ph = list.map((c) => {
-          values.push(row[c]);
+          const v = row[c];
+          if (jsonCols.has(c)) {
+            values.push(v === null || v === undefined ? null : JSON.stringify(v));
+            return `$${values.length}::jsonb`;
+          }
+          values.push(v);
           return `$${values.length}`;
         });
         return `(${ph.join(", ")})`;
