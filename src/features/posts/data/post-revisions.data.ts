@@ -1,5 +1,4 @@
 import { and, desc, eq, inArray, max, sql } from "drizzle-orm";
-import type { BatchItem } from "drizzle-orm/batch";
 import {
   type PostRevisionReason,
   type PostRevisionSnapshot,
@@ -161,8 +160,20 @@ export async function restorePostSnapshot(
   // even if another write lands before the Post is read back.
   const saveToken = newSaveToken();
   const restored = sql`EXISTS (SELECT 1 FROM posts WHERE id = ${data.postId} AND save_token = ${saveToken})`;
-  const batchQueries: [BatchItem<"pg">, ...Array<BatchItem<"pg">>] = [
-    db
+
+  /**
+   * One transaction, in this order: update the draft, keep the previous draft
+   * as a Revision, replace its Tags. Every later statement is gated on
+   * `restored`, so nothing is written when the update matched no row.
+   *
+   * The backup insert names its columns instead of going through
+   * `insert().select()`: that helper lists `id` too and passes NULL, which
+   * SQLite's INTEGER PRIMARY KEY turns into an autoincrement but PostgreSQL
+   * rejects as a NOT NULL violation. Leaving the column out lets the sequence
+   * fill it.
+   */
+  const restoredRow = await db.transaction(async (tx) => {
+    const updated = await tx
       .update(PostsTable)
       .set({
         title: data.snapshot.title,
@@ -196,33 +207,39 @@ export async function restorePostSnapshot(
             : eq(PostsTable.saveToken, data.saveToken),
         ),
       )
-      .returning({ id: PostsTable.id }),
-    // insert ... select, so the backup is written only once the Post has been
-    // updated. Its columns, in order: id, post_id, reason, snapshot_json,
-    // snapshot_hash, restored_from_revision_id, created_at.
-    db
-      .insert(PostRevisionsTable)
-      .select(
-        sql`SELECT NULL, ${data.postId}, ${data.backupRevision.reason}, ${JSON.stringify(data.backupRevision.snapshotJson)}, ${data.backupRevision.snapshotHash}, ${data.backupRevision.restoredFromRevisionId ?? null}, now() WHERE ${restored}`,
-      ),
-    db
+      .returning({ id: PostsTable.id });
+
+    if (updated.length === 0) return null;
+
+    await tx.execute(sql`
+      insert into post_revisions (post_id, reason, snapshot_json, snapshot_hash, restored_from_revision_id, created_at)
+      select ${data.postId}, ${data.backupRevision.reason},
+             ${JSON.stringify(data.backupRevision.snapshotJson)}::jsonb,
+             ${data.backupRevision.snapshotHash},
+             ${data.backupRevision.restoredFromRevisionId ?? null}::integer,
+             now()
+       where ${restored}
+    `);
+
+    await tx
       .delete(PostTagsTable)
-      .where(and(eq(PostTagsTable.postId, data.postId), restored)),
-  ];
+      .where(and(eq(PostTagsTable.postId, data.postId), restored));
 
-  if (tagIds.length > 0) {
-    batchQueries.push(
-      db.insert(PostTagsTable).select(
-        sql`SELECT ${data.postId}, id FROM tags WHERE id IN (${sql.join(
-          tagIds.map((tagId) => sql`${tagId}`),
-          sql`, `,
-        )}) AND ${restored}`,
-      ),
-    );
-  }
+    if (tagIds.length > 0) {
+      await tx.execute(sql`
+        insert into post_tags (post_id, tag_id)
+        select ${data.postId}, id from tags
+         where id in (${sql.join(
+           tagIds.map((tagId) => sql`${tagId}`),
+           sql`, `,
+         )}) and ${restored}
+      `);
+    }
 
-  const [updated] = await db.batch(batchQueries);
-  if (updated.length === 0) return null;
+    return updated[0];
+  });
+
+  if (!restoredRow) return null;
   const post = await findPostById(db, data.postId);
   return post && { ...post, saveToken };
 }
