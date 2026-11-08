@@ -221,15 +221,18 @@ describe("purgeOptionsFor", () => {
 });
 
 describe("CACHE_CONTROL", () => {
-  it("keeps public HTML fresh at the edge for a day and stale for a week", () => {
-    expect(CACHE_CONTROL.html["CDN-Cache-Control"]).toBe(
-      "public, max-age=86400, stale-while-revalidate=604800",
+  it("lets the edge cache public HTML for a minute and serve it stale for half an hour", () => {
+    // EdgeOne does not read CDN-Cache-Control, so the edge lifetime has to be
+    // in Cache-Control itself: s-maxage for the edge, max-age=0 for the browser
+    // so a reader always revalidates.
+    expect(CACHE_CONTROL.html["Cache-Control"]).toBe(
+      "public, max-age=0, s-maxage=60, stale-while-revalidate=1800",
     );
   });
 
-  it("leaves the browser always revalidating public HTML", () => {
-    expect(CACHE_CONTROL.html["Cache-Control"]).toBe(
-      "public, max-age=0, must-revalidate",
+  it("still carries the Cloudflare edge values alongside", () => {
+    expect(CACHE_CONTROL.html["CDN-Cache-Control"]).toBe(
+      "public, max-age=60, stale-while-revalidate=1800",
     );
   });
 
