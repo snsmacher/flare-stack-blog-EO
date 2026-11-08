@@ -13,7 +13,7 @@
 
 /** 国内库（阿里云杭州）。密码里的 $ ! @ # 必须百分号编码，否则 @ 会被当成主机分隔符。 */
 export const DOMESTIC_DATABASE_URL =
-  "postgresql://postgres:8U0z6%24qgja%40WDYz6tSs%21q7%23h8y32W@spb-8thy33l7lufa325y.supabase.opentrust.net:5432/postgres?sslmode=verify-full";
+  "postgresql://postgres:yourpassword@yoursSQLDOMAIN:5432/postgres?sslmode=verify-full";
 
 /** 需要被替换掉的外网库特征：Neon 的接入域名与默认库名。 */
 const FOREIGN_HOST_PATTERN = /neon\.tech|neondb/i;
