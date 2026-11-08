@@ -4,7 +4,7 @@
 
 [Flare-Stack-Blog](https://github.com/du2333/flare-stack-blog) 的 EdgeOne 运行时版本。领域模型、后台功能、HTTP API 契约都沿用上游，换掉的是跑在哪、数据存哪：Cloudflare Workers → 腾讯云 EdgeOne Makers，D1 → PostgreSQL。这个仓库就是线上站的全部源码，推 `main` 就构建上线。
 
-保留原名称不是客气：它是同一套博客的另一个运行时实现，接口对齐，上游的功能演进和修 bug 才能持续落到这套部署上。本仓库有自己的版本线与 [CHANGELOG](./CHANGELOG.md)，与上游没有共同提交历史，上游改动按「跟进上游」的规则手工移植。
+本仓库有自己的版本线与 [CHANGELOG](./CHANGELOG.md)，与上游没有共同提交历史，如果上游进行改动，您想第一时间体验的话，可以按照下文跟进上游来进行移植，我们也会在稍后后进行跟进
 
 ## 功能
 
