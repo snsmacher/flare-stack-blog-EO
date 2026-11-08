@@ -132,6 +132,12 @@ export async function matchSearchDocuments(
   // which is why the `simple` dictionary is the right one: it splits on
   // whitespace and does no stemming or stop-word removal, so the segmentation
   // the app already did survives. A GIN index on the same expression backs it.
+  //
+  // `websearch_to_tsquery` rather than `to_tsquery`: the latter only accepts
+  // terms joined by `&`/`|`, so the space-separated list `toFtsMatchQuery`
+  // produces raised `syntax error in tsquery` (42601) on every query with two
+  // or more words — which is nearly every Chinese one. The websearch syntax
+  // reads bare terms as AND, and never fails on user input.
   const result = await db.$client.query<{
     postId: number;
     slug: string;
@@ -142,8 +148,8 @@ export async function matchSearchDocuments(
   }>(
     `SELECT d.post_id AS "postId", d.slug, d.title, d.summary, d.content, d.tags
        FROM search_documents d
-      WHERE to_tsvector('simple', d.tokens) @@ to_tsquery('simple', $1)
-      ORDER BY ts_rank(to_tsvector('simple', d.tokens), to_tsquery('simple', $1)) DESC
+      WHERE to_tsvector('simple', d.tokens) @@ websearch_to_tsquery('simple', $1)
+      ORDER BY ts_rank(to_tsvector('simple', d.tokens), websearch_to_tsquery('simple', $1)) DESC
       LIMIT $2`,
     [match, limit],
   );

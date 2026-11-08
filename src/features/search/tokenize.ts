@@ -10,11 +10,21 @@ export function tokenizeForSearch(...parts: Array<string | null | undefined>) {
     .join(" ");
 }
 
+/**
+ * The `websearch_to_tsquery` form of the query: every term quoted, separated by
+ * spaces, which that syntax reads as AND. Quoting stops a term from being taken
+ * for an operator; repeated words are dropped so that a doubled word such as
+ * 「哔哩哔哩」 does not turn into four conditions on two lexemes.
+ */
 export function toFtsMatchQuery(query: string) {
-  const tokens = Array.from(segmenter.segment(query))
-    .filter((item) => item.isWordLike)
-    .map((item) => item.segment.toLowerCase().replaceAll('"', '""'))
-    .filter((token) => token.length > 0);
+  const tokens = [
+    ...new Set(
+      Array.from(segmenter.segment(query))
+        .filter((item) => item.isWordLike)
+        .map((item) => item.segment.toLowerCase())
+        .filter((token) => token.length > 0),
+    ),
+  ];
 
   if (tokens.length === 0) return null;
   return tokens.map((token) => `"${token}"`).join(" ");
