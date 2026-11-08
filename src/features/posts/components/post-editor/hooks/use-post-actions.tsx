@@ -1,3 +1,4 @@
+import { ORPCError } from "@orpc/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -91,6 +92,32 @@ export function usePostActions({
   publishedRef.current = post.hasPublicSnapshot || post.publishedAt !== null;
   const debouncedTitle = useDebounce(post.title, 500);
 
+  /**
+   * Reads the post again after a write failed without the server refusing it,
+   * and takes the `saveToken` it finds.
+   *
+   * Publishing highlights code and writes the Public Content Snapshot, which
+   * on a slow platform can outlast the request: the server finishes and
+   * replaces the token while the browser sees only a dropped connection. The
+   * editor would then hold a stale token and every later write would be
+   * refused as an Edit Conflict nobody caused. A save request can end the same
+   * way, so both paths resync through here.
+   */
+  const resyncAfterLostResponse = useCallback(async () => {
+    try {
+      const fresh = await orpcClient.posts.admin.get({ id: postId });
+      acceptSaveToken(fresh.saveToken);
+      setPost((prev) => ({
+        ...prev,
+        publishedAt: fresh.publishedAt,
+        hasPublicSnapshot: fresh.hasPublicSnapshot,
+      }));
+      return fresh;
+    } catch {
+      return null;
+    }
+  }, [acceptSaveToken, postId, setPost]);
+
   const publishMutation = useMutation({
     mutationFn: () =>
       orpcClient.posts.admin.publish({ id: postId, saveToken: getSaveToken() }),
@@ -108,10 +135,33 @@ export function usePostActions({
         setProcessState("IDLE");
       }, 3000);
     },
-    onError: (error) => {
+    onError: async (error) => {
       const found = editConflictOf(error);
-      if (found) reportConflict(found);
-      else toast.error(publishErrorMessage(error));
+      if (found) {
+        reportConflict(found);
+        setProcessState("IDLE");
+        return;
+      }
+      // Anything but a refusal the server stated may be a publish that landed
+      // after the response was lost: keep it instead of reporting a failure
+      // the Admin would answer by publishing a second time.
+      if (!(error instanceof ORPCError)) {
+        const fresh = await resyncAfterLostResponse();
+        if (fresh?.publishedAt && !fresh.hasUnpublishedChanges) {
+          toast.success(
+            stateRef.current === "published-changed"
+              ? m.editor_toast_published_changes()
+              : m.editor_toast_published(),
+          );
+          setProcessState("SUCCESS");
+          void invalidatePostQueries(queryClient, postId);
+          setTimeout(() => {
+            setProcessState("IDLE");
+          }, 3000);
+          return;
+        }
+      }
+      toast.error(publishErrorMessage(error));
       setProcessState("IDLE");
     },
   });
@@ -140,6 +190,10 @@ export function usePostActions({
         reason !== EDIT_CONFLICT_ERROR &&
         reason !== CONTENT_TOO_LARGE_ERROR
       ) {
+        // The save itself may have been written before the connection dropped.
+        // Line the token up first, so the next publish does not carry a stale
+        // one and come back as an Edit Conflict it did not really hit.
+        await resyncAfterLostResponse();
         toast.error(
           reason === BLOB_UPLOADING_ERROR
             ? m.editor_action_image_uploading()
@@ -150,7 +204,7 @@ export function usePostActions({
       return;
     }
     publishMutation.mutate();
-  }, [flush, processState, publishMutation]);
+  }, [flush, processState, publishMutation, resyncAfterLostResponse]);
 
   const handleUnpublish = useCallback(async () => {
     if (processState !== "IDLE" || conflicted) return;

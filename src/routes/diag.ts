@@ -26,6 +26,12 @@ const ENV_KEYS = [
   "DOMAIN",
   "GITHUB_CLIENT_ID",
   "GITHUB_CLIENT_SECRET",
+  "UMAMI_SRC",
+  "UMAMI_WEBSITE_ID",
+  "UMAMI_API_URL",
+  "UMAMI_API_KEY",
+  "UMAMI_USERNAME",
+  "UMAMI_PASSWORD",
   "NODE_ENV",
 ] as const;
 
@@ -69,7 +75,9 @@ export const Route = createFileRoute("/diag")({
         out.processEnv = fromProcess;
 
         // 2) context.env view (the official Makers runtime channel)
-        const ctxEnv = (context as { env?: Record<string, string> } | undefined)?.env;
+        const ctxEnv = (
+          context as unknown as { env?: Record<string, string> } | undefined
+        )?.env;
         if (ctxEnv) {
           const fromCtx: Record<string, string> = {};
           for (const k of ENV_KEYS) fromCtx[k] = describe(ctxEnv[k]);
@@ -83,7 +91,9 @@ export const Route = createFileRoute("/diag")({
         // 3) live Postgres round-trip
         try {
           const db = getDb(context.env as Env);
-          const r = await db.execute(sql`select 1 as ok, current_database() as db`);
+          const r = await db.execute(
+            sql`select 1 as ok, current_database() as db`,
+          );
           out.dbPing = "ok";
           out.dbPingRows = (r as { rows?: unknown }).rows ?? r;
         } catch (e) {
@@ -103,7 +113,11 @@ export const Route = createFileRoute("/diag")({
           out.postsQuery = "ok";
           out.homePostCount = Array.isArray(home) ? home.length : typeof home;
           out.homePostTitles = Array.isArray(home)
-            ? home.map((p) => (p.publicSnapshotJson as { title?: string } | null)?.title ?? p.id)
+            ? home.map(
+                (p) =>
+                  (p.publicSnapshotJson as { title?: string } | null)?.title ??
+                  p.id,
+              )
             : undefined;
         } catch (e) {
           const err = e as { message?: string; code?: string };
@@ -119,12 +133,18 @@ export const Route = createFileRoute("/diag")({
           try {
             await invalidate.all({
               env: context.env,
-              executionCtx: { waitUntil: () => {}, passThroughOnException: () => {} },
+              executionCtx: {
+                waitUntil: () => {},
+                passThroughOnException: () => {},
+              },
             } as never);
             out.cacheBust = "ok";
           } catch (e) {
             out.cacheBust = "FAIL";
-            out.cacheBustError = String((e as Error)?.message ?? e).slice(0, 500);
+            out.cacheBustError = String((e as Error)?.message ?? e).slice(
+              0,
+              500,
+            );
           }
         }
 

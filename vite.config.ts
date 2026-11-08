@@ -25,6 +25,15 @@ function bakeSecretsForSsr(): Plugin {
     "DOMAIN",
     "GITHUB_CLIENT_ID",
     "GITHUB_CLIENT_SECRET",
+    // Umami: the access-statistics script is proxied through /stats.js and
+    // /api/send, which read UMAMI_SRC on the server. Without baking it the
+    // proxy has nothing to forward to and the script 404s.
+    "UMAMI_WEBSITE_ID",
+    "UMAMI_SRC",
+    "UMAMI_API_URL",
+    "UMAMI_API_KEY",
+    "UMAMI_USERNAME",
+    "UMAMI_PASSWORD",
   ];
   const define: Record<string, string> = {};
   for (const name of names) {

@@ -27,7 +27,15 @@ const serverEnvSchema = z.object({
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
 export function serverEnv(env: Env) {
-  const result = serverEnvSchema.safeParse(env);
+  // `nodeEnv` snapshots `process.env` once, when its module loads, while the
+  // EdgeOne container boots with an empty one and only receives the platform's
+  // variables on the first invocation. Reading `process.env` again here keeps
+  // optional settings such as UMAMI_SRC visible even when the build did not
+  // bake them; keys the caller actually holds still win over it.
+  const held = Object.fromEntries(
+    Object.entries(env).filter(([, value]) => value !== undefined),
+  );
+  const result = serverEnvSchema.safeParse({ ...process.env, ...held });
 
   if (!result.success) {
     console.error(

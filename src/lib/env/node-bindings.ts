@@ -38,6 +38,27 @@ const bakedEnv = {
   get GITHUB_CLIENT_SECRET() {
     return process.env.GITHUB_CLIENT_SECRET;
   },
+  // Umami. `/stats.js` and `/api/send` read UMAMI_SRC off the env object to
+  // proxy the statistics script; the post-heat sync reads the rest. Baked like
+  // the variables above, since the container boots with an empty process.env.
+  get UMAMI_WEBSITE_ID() {
+    return process.env.UMAMI_WEBSITE_ID;
+  },
+  get UMAMI_SRC() {
+    return process.env.UMAMI_SRC;
+  },
+  get UMAMI_API_URL() {
+    return process.env.UMAMI_API_URL;
+  },
+  get UMAMI_API_KEY() {
+    return process.env.UMAMI_API_KEY;
+  },
+  get UMAMI_USERNAME() {
+    return process.env.UMAMI_USERNAME;
+  },
+  get UMAMI_PASSWORD() {
+    return process.env.UMAMI_PASSWORD;
+  },
 };
 
 /**
