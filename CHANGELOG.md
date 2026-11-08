@@ -10,6 +10,12 @@
 
 - GitHub Actions 自动发版（`.github/workflows/release.yml`）：推 `main` 时若 `package.json` 的版本还没有对应 tag，自动打 `vX.Y.Z` 并按本文件创建 Release；只改代码不动版本号不会重复发版
 - `scripts/release-notes.mjs`：从本文件截取某一版作为发行说明，缺条目或条目为空时直接失败，不会发出空白 Release
+- `docs/deployment.md` 部署指南：数据库两条连接串、建表、Makers 项目配置、环境变量与烘焙、GitHub OAuth、域名、上线自检、回滚、排查手册
+- `AGENTS.md` 重写为项目指令入口（ZCode 只读 `AGENTS.md` 与 `~/.zcode/AGENTS.md`，不读 `CLAUDE.md`）：命令表、目录地图、常见改动入口、硬性约束、本机环境的坑
+
+### 变更
+
+- `bun run build` 现在自带 EdgeOne 产物补丁，`build:eo` 保留为别名。此前只有 `build:eo` 会跑 `patch-eo-handler.mjs`，控制台若填的是 `build`，`handler.js` 就少了 env 注入与 pg-pool 修复
 
 ### 修复
 

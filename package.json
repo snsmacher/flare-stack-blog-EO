@@ -2,8 +2,8 @@
   "name": "flare-stack-blog-eo",
   "version": "1.0.0",
   "private": true,
-  "license": "GPL-3.0-only",
   "homepage": "https://blog.765528.xyz",
+  "license": "GPL-3.0-only",
   "author": {
     "name": "akuang",
     "email": "kuangdadu@gmail.com",
@@ -12,7 +12,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3000",
-    "build": "bun run orpc:contract && vite build",
+    "build": "bun run orpc:contract && vite build && node scripts/patch-eo-handler.mjs",
     "test:node": "vitest run --config vitest.node.config.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
@@ -28,7 +28,7 @@
     "db:generate": "drizzle-kit generate",
     "auth:generate-schema": "bunx @better-auth/cli generate --yes --config auth-cli.ts --output src/lib/db/schema/auth.table.ts",
     "prepare": "husky",
-    "build:eo": "vite build && node scripts/patch-eo-handler.mjs"
+    "build:eo": "bun run build"
   },
   "dependencies": {
     "@better-auth/api-key": "1.7.6",

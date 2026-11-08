@@ -95,8 +95,9 @@ docs/adr/            架构决策记录
 | 文件 | 作用 |
 | --- | --- |
 | `README.md` | 项目全貌：能做什么、怎么跑、怎么上线 |
+| `docs/deployment.md` | 部署指南：数据库、环境变量、域名、发布、回滚、排查手册 |
 | `CHANGELOG.md` | 版本线：每个版本改了什么，以及对应上游哪个版本 |
-| `AGENTS.md` | 给 AI/协作者的操作边界与验证顺序 |
+| `AGENTS.md` | 给 AI/协作者的项目指令：边界、禁区、验证顺序、改动入口 |
 | `docs/adr/` | 架构决策的来龙去脉 |
 | `GLOSSARY.md` | 领域词表：文章、快照、修订、静音这些词的确切含义 |
 
@@ -146,6 +147,8 @@ bun run build        # EdgeOne 适配器产物
 EdgeOne Makers 直连 Git 仓库，推到 `main` 触发构建，构建命令 `bun run build`，产物由 `@edgeone/tanstack-start` 适配器生成并跑在 `ssr-node` 云函数里。
 
 改动环境变量后要手动重新构建一次，否则 SSR 包里的还是旧值——这是烘焙机制带来的唯一操作负担。
+
+从零搭一套（建库、建表、OAuth App、域名、验证、回滚、排错）的完整步骤见 [docs/deployment.md](./docs/deployment.md)。
 
 ## 数据库
 
