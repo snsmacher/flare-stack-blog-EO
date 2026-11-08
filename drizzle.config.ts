@@ -3,11 +3,11 @@ import { defineConfig } from "drizzle-kit";
 /**
  * Two connection strings, on purpose:
  *
- * - `DATABASE_URL` points at the pooled endpoint (Neon's `-pooler` host) and is
- *   what the running app uses, so Cloud Function instances do not each pin a
- *   server connection.
- * - `DATABASE_URL_DIRECT` points at the direct endpoint and is what migration
- *   uses, because a transaction-scoped pooler cannot carry session-level state.
+ * - `DATABASE_URL` is what the running app uses, so Cloud Function instances
+ *   share one pool instead of each pinning a server connection.
+ * - `DATABASE_URL_DIRECT` is what migration uses, because a transaction-scoped
+ *   pooler cannot carry session-level state. It falls back to `DATABASE_URL`
+ *   when the provider exposes a single endpoint.
  *
  * `channel_binding` is a libpq parameter that node-postgres and drizzle-kit
  * both reject, so it is stripped instead of passed through.

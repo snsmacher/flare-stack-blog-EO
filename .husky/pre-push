@@ -1,5 +1,5 @@
-# Pushing to dev or main deploys the live blog (Workers Builds), and CI only
-# runs on pull requests, so gate those pushes on a build and the node tests.
+# Pushing to dev or main builds and deploys the live blog on EdgeOne, so gate
+# those pushes on a build and the node tests first.
 deploys=0
 while read -r local_ref local_sha remote_ref remote_sha; do
   case "$remote_ref" in

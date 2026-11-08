@@ -2,7 +2,7 @@ import type { AnyContractProcedure } from "@orpc/contract";
 import { ORPCError, os } from "@orpc/server";
 import { z } from "zod";
 import { sendsApiKey } from "@/lib/auth/api-key-guard";
-import type { RateLimitOptions } from "@/lib/do/rate-limiter";
+import type { RateLimitOptions } from "@/lib/do/rate-limiter-binding";
 import { getRateLimiter } from "@/lib/do/rate-limiter-binding";
 import { serverEnv } from "@/lib/env/server.env";
 import { rateLimitKeyFromIp } from "@/lib/http/rate-limit-key";

@@ -1,131 +1,126 @@
-<div align="center">
+# 砂墨博客 · EdgeOne 版
 
-<img src="docs/assets/flare-stack-blog-logo.png" alt="Flare Stack Blog Logo" width="144">
+线上地址：<https://blog.765528.xyz>
 
-# Flare Stack Blog
+这是 [du2333/flare-stack-blog](https://github.com/du2333/flare-stack-blog) **3.10.0** 的个人部署版：运行时从 Cloudflare Workers 整体搬到**腾讯云 EdgeOne Makers**，数据库换成**国内 PostgreSQL**，其余（React 19 + TanStack Start 的界面、TipTap 编辑器、i18n、整套 CMS 业务逻辑）都还是上游那一套。
 
-基于 **Cloudflare 边缘生态**打造的高性能全栈博客与 CMS 系统<br>
-利用 Workers、D1、R2、KV 与 Queues 实现真正的全 Serverless 架构
+需要先说明一件事：**本仓库与上游没有共同提交历史**。初始提交就是移植版快照，`git merge upstream/main` 不可能成功，上游的 D1 迁移与 Workers 绑定在这里全是死代码。怎么从上游取新东西，见文末「从上游取改动」。
 
-[![License](https://img.shields.io/github/license/du2333/flare-stack-blog?style=flat-square)](https://github.com/du2333/flare-stack-blog/blob/main/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/du2333/flare-stack-blog?style=flat-square)](https://github.com/du2333/flare-stack-blog/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/du2333/flare-stack-blog?style=flat-square)](https://github.com/du2333/flare-stack-blog/network/members)
-[![React](https://img.shields.io/badge/React-19-blue?logo=react&style=flat-square)](https://react.dev)
-[![TanStack Start](https://img.shields.io/badge/TanStack%20Start-black?logo=tanstack&style=flat-square)](https://tanstack.com/start)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?logo=tailwind-css&style=flat-square)](https://tailwindcss.com)
+## 与上游的差异
 
-[在线演示](https://blog.dukda.com) · [部署指南](./docs/deployment.md) · [视频教程](https://www.bilibili.com/video/BV1iQHr6NEcC/) · [本地开发](#本地开发) · [贡献指南](./CONTRIBUTING.md) · [交流群组](https://t.me/+vWuQYybv1kgxMDkx)
+| 层 | 上游 | 这里 |
+| --- | --- | --- |
+| 运行时 | Cloudflare Workers | EdgeOne Makers，SSR 跑在云函数 |
+| 数据库 | D1（SQLite） | PostgreSQL 17（阿里云），`pg` + drizzle |
+| KV | Workers KV | EdgeOne Blob 之上的一层 KV 语义（带 TTL 信封） |
+| 文件存储 | R2 | EdgeOne Blob（`blog-media`、`blog-kv` 两个命名空间） |
+| 限流 | Durable Object | 进程内令牌桶（单实例有效） |
+| 缓存 | `CDN-Cache-Control` + Cache-Tag 清除 | `Cache-Control: s-maxage`，靠短 TTL 自然过期 |
+| 搜索 | D1 FTS5 + 预分词列 | 进程内索引 + 子串匹配，见下文 |
+| 队列 | Queues | 无对应物，`src/lib/queue` 保留但未接线 |
 
-</div>
-
----
-
-Flare Stack Blog 是一个深度拥抱 Cloudflare 生态的开源独立博客系统。前端基于 React 19 和 TanStack 现代全栈框架构建，界面承袭清新简约的 [Fuwari](https://github.com/saicaca/fuwari) 视觉风格；后端完全运行于 Cloudflare Workers 边缘网络，搭配 D1、R2、KV 与异步队列，无需传统服务器即可享受极速的全球访问体验与近乎零成本的运维。
-
-> [!NOTE]
-> 本项目专为 Cloudflare Workers 边缘运行时设计。
-
-## 界面预览
-
-<div align="center">
-  <img src="docs/assets/home.png" alt="首页预览" width="49%">
-  <img src="docs/assets/admin.png" alt="管理后台预览" width="49%">
-</div>
-
-## 功能特性
-
-- 📝 **创作与内容管理**
-  - **现代化富文本编辑器**：基于 TipTap 与 Shiki，原生支持代码语法高亮、数学公式排版、多尺寸媒体插入与文章封面。
-  - **版本快照与历史回滚**：发布文章时自动归档快照，可随时按发布时间比对差异并一键恢复至任意历史版本。
-  - **分类与标签体系**：支持文章单分类与多标签灵活组合筛选。
-  - **站内实时全文检索**：用 Cloudflare D1 FTS 索引已发布文章的标题、摘要、分类、标签与正文。
-
-- 💬 **互动与读者体验**
-  - **评论与社区互动**：支持嵌套层级回复、访客防刷保护、评论软删除与违规用户禁言管理。
-  - **友情链接流转**：前台提供规范的申请表单，后台支持一键审核通过、驳回反馈与邮件即时联动。
-  - **国际化多语言**：公开阅读界面与管理后台均完整支持中英文无缝切换。
-
-- ⚡ **边缘基础设施**
-  - **全 Serverless 存储栈**：以 Cloudflare D1 作为主关系型数据库，KV 承担高频缓存，Durable Objects 负责精准访问限流。
-  - **全球静态资产加速**：媒体文件直存 R2 存储桶，配合 Cloudflare Image Resizing 实现实时图片缩放与格式优化。
-  - **异步队列事件解耦**：通知邮件发送与 Webhook 派发经由 Cloudflare Queues 异步队列处理，接口响应零阻塞。
-
-- 🛠️ **系统与扩展能力**
-  - **安全身份认证**：集成 Better Auth，支持 GitHub OAuth 快捷登录，以及发送到邮箱的 6 位登录码（无密码；需在后台配置邮件发送后启用）。
-  - **通知推送**：新评论、回复和友链申请可推送到 Telegram、Discord、飞书、钉钉、企业微信、Bark、ntfy，或带签名的通用 JSON 与自定义模板，详见 [Webhook 推送](docs/webhook.md)。
-  - **开放 API 接口**：支持在后台签发 API Key，通过规范化 OpenAPI / oRPC 接口无缝对接第三方自动化工具或发布脚本。
-  - **访问分析与 SEO**：内建 Umami 统计与文章热度自动同步，开箱支持 Canonical、Schema.org、RSS / Atom / JSON Feed、Sitemap 与 Robots 标准。
+`docs/adr/` 保留了上游的架构决策记录，其中 `0001`、`0009`、`0023` 描述的是 Cloudflare 时代的设计，读的时候当作历史背景，别当现状。
 
 ## 技术栈
 
-| 模块 | 选型 | 说明 |
-| :--- | :--- | :--- |
-| **边缘运行时** | Cloudflare Workers | 全球边缘免运维托管与服务端流式渲染（SSR） |
-| **数据与存储** | Cloudflare D1 + R2 + KV | 关系型数据库（含全文检索）、对象存储与边缘键值缓存 |
-| **异步与限流** | Cloudflare Queues + DO | 异步任务解耦队列与 Durable Objects 请求限流 |
-| **全栈框架** | TanStack Start + Router + Query | 现代全栈路由系统、服务端数据预取与水合 |
-| **前端技术** | React 19 + Tailwind CSS 4 | 现代化组件开发与主题样式系统 |
-| **API 与 ORM** | oRPC + Drizzle ORM | 端到端类型安全的 OpenAPI 接口与 SQL ORM |
-| **身份认证** | Better Auth | 边缘兼容的现代化身份验证服务 |
-| **富文本** | TipTap + Shiki | 可扩展的所见即所得编辑器与代码高亮引擎 |
+- 前端：React 19、TanStack Start 1.169（文件路由 + SSR）、Tailwind CSS 4、TipTap 3、Shiki
+- 后端：TanStack Start server routes + oRPC（OpenAPI 契约自动生成）、better-auth（GitHub OAuth）
+- 数据：PostgreSQL + drizzle-orm/pg；`db.batch()` 是按 D1 语义手写的 BEGIN/COMMIT 实现
+- i18n：Paraglide（`messages/` 里是 zh/en 两份文案）
+- 工具链：bun、Vite 8、oxlint、oxfmt、vitest（node 环境）
 
-## 部署指南
+## 目录地图
 
-使用 GitHub 与 Cloudflare Workers Builds 部署，请阅读独立的 [图文部署指南](./docs/deployment.md)，包含首次部署、可选配置和后续更新。
+```
+src/routes/        页面与 API 路由（_public 是读者侧，admin 是后台）
+src/features/      按业务切分的模块，每个含 data / service / server / components
+src/features/search/  搜索：进程内索引与匹配（engine.ts）
+src/lib/           基础设施：db、env、auth、orpc、cache、queue、mail
+src/paraglide/     生成产物，勿手改
+migrations/        PostgreSQL 迁移（0000_pg_baseline.sql 是整库基线）
+scripts/           生成与运维脚本（orpc 契约、i18n 校验、整库克隆）
+docs/adr/          架构决策记录
+```
 
 ## 本地开发
 
-开发环境要求：[Bun](https://bun.sh) >= 1.3。
-
-### 1. 安装依赖与初始化配置
-
 ```bash
-# 克隆仓库并安装依赖
-git clone https://github.com/du2333/flare-stack-blog.git
-cd flare-stack-blog
 bun install
-
-# 复制本地配置文件模板
-cp .env.example .env
-cp .dev.vars.example .dev.vars
+cp .env.example .env.local     # 按注释填，至少 DATABASE_URL 与 BETTER_AUTH_*
+bun dev                        # http://localhost:3000
 ```
 
-参考 `.env` 与 `.dev.vars` 中的注释完成基础项配置。本地开发通过 Miniflare 本地模拟 D1、KV 和 R2 存储服务，Worker 配置位于 `cloudflare.config.ts`，未设置部署变量时会使用占位符直接启动。该配置需要 Node ≥ 24（见 `.node-version`）。
-
-### 2. 启动本地开发服务
+提交前会自动跑 `oxlint`（pre-commit）与 `typecheck` + `build` + `test:node`（pre-push）。想手动验证：
 
 ```bash
-bun dev
+bun run typecheck     # cf workers types + tsc --noEmit
+bun run lint
+bun run test:node     # 1683 个用例，纯 node 环境，不碰数据库
+bun run build         # EdgeOne 适配器产物
 ```
 
-在浏览器中打开 `http://localhost:3000` 即可开始预览。
+`bun run test` 已经不存在：上游那批 `*.integration.test.ts` 依赖 miniflare + D1，在这个仓库里跑不起来，已整体删除（需要时从 git 历史取）。
 
-> [!TIP]
-> - 本地开发模式下不会真实投递邮件，登录码会连同邮件内容直接打印在终端控制台中。登录页只有在后台配置了邮件发送服务后才会显示邮箱登录。
-> - 本地数据库中第一个创建的用户同样会自动成为管理员。
+## 部署
 
-### 常用开发脚本
+EdgeOne Makers 与 Git 仓库直连，推到 `main` 即触发构建，构建命令 `bun run build`，产物由 `@edgeone/tanstack-start` 适配器生成。
 
-| 命令 | 说明 |
-| :--- | :--- |
-| `bun dev` | 启动本地开发服务（默认监听端口 3000） |
-| `bun check` | 提交前综合检查（包含 OpenAPI 合约生成、代码格式校验、Lint 与 TypeScript 类型检查） |
-| `bun test` | 执行全量集成与单元测试套件 |
-| `bun db:migrate:local` | 对本地模拟数据库应用 D1 数据库迁移 |
-| `bun db:studio` | 启动本地 Drizzle Studio 可视化数据库管理界面 |
-| `bun i18n:verify` | 检查并校验多语言词条键值完整性（zh / en 一致性） |
-| `bun i18n:compile` | 重新编译并生成 Paraglide 多语言运行时产物 |
+环境变量填在 EdgeOne 控制台的**构建环境变量**里。构建期会把下面这批有值变量烘焙进 SSR 包（`vite.config.ts` 的 `bake-secrets-for-ssr`），运行时改它们不生效，必须重新构建：
 
-## 参与贡献
+| 变量 | 用途 |
+| --- | --- |
+| `DATABASE_URL` | PG 连接串。留空或仍指向 neon 时，构建期自动换成内置的阿里云地址 |
+| `DATABASE_URL_DIRECT` | drizzle-kit 迁移用，直连不走池化 |
+| `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` | better-auth，URL 必须是完整地址 |
+| `DOMAIN` | 站点域名，用于 cookie 与 canonical |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | 唯一的登录方式 |
+| `UMAMI_SRC` / `UMAMI_WEBSITE_ID` / `UMAMI_USERNAME` / `UMAMI_PASSWORD` | 自托管 umami：`/stats.js` 与 `/api/send` 反代到它，文章热度也从它同步 |
+| `VITE_UMAMI_WEBSITE_ID` | 前端埋点开关。不填，页面里根本不会有统计脚本 |
+| `PG_POOL_MAX` | 连接池上限，默认 5 |
 
-非常欢迎任何形式的贡献！无论是新功能提议、代码重构还是文档润色，都可以先阅读 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解我们的协作流程。
+部署完先开 `https://<域名>/diag?k=smo-diag-2026`：它只报「有没有值、长度多少、URL 的 host」，不打印密钥，能一眼看出哪个变量没进构建。
 
-欢迎加入我们的 [Telegram 交流群](https://t.me/+vWuQYybv1kgxMDkx) 与其他开发者一起交流探讨。
+`EO_BLOB_PROJECT_ID` / `EO_BLOB_TOKEN` 只在 EdgeOne 之外（本地 Node）需要，线上由平台自行鉴权。
 
-## 致谢
+## 数据库
 
-- **[Fuwari](https://github.com/saicaca/fuwari)**：本项目优雅清新的界面与动效设计灵感源自 [@saicaca](https://github.com/saicaca) 优秀的开源博客主题。
+```bash
+bun run db:generate   # 改完 src/lib/db/schema 后生成迁移
+bun run db:push       # 直接推 schema（开发时用）
+bun run db:studio     # 可视化
+```
 
-## 开源协议
+线上以 `migrations/` 为准。要从别的 PG 整库搬过来，用 `scripts/pg-clone.mjs`：它读源库的 DDL、按依赖顺序建表、分批导数据，可重复执行（已存在的约束和索引会跳过）。
 
-本项目采用 [GPL-3.0](https://github.com/du2333/flare-stack-blog/blob/main/LICENSE) 协议开源。
+## 搜索
+
+`src/features/search/engine.ts`，一句话：**进程内索引 + 子串匹配**。
+
+- 进程里缓存全部已发布文章的标题、标签、摘要、正文；只在 `search_index_meta.version` 变化时重读一遍，所以刚发布的文章下一次搜索就能搜到
+- 匹配用大小写不敏感的子串比对，不切词。这是被 `tsvector` 和 Orama 各坑一次之后的选择：`tsvector` 以「词」为单位，「中行」永远搜不到「中国银行」；Orama 把查询词按 OR 拼，会返回根本不含该词的文章
+- 排序：先按整串命中的字段分层（标题 > 标签 > 摘要 > 正文 > 散词），同层再按命中次数乘字段权重
+- 实测 10 篇文章：单次查询 0.02～1.5ms；冷启动首次约 2.7s（含建索引与建连）
+
+代价是每个实例存一份全文（另加一份小写副本）。文章到几百篇、正文几十万字时该换成 `pg_trgm` 索引，现在这个量级不值得。
+
+## 从上游取改动
+
+```bash
+git remote add upstream https://github.com/du2333/flare-stack-blog.git
+git fetch upstream --tags
+git diff v3.10.0 v3.11.0 --stat          # 新版出来时把 tag 换掉
+git checkout v3.11.0 -- src/features/posts/components/...
+```
+
+规则只有一条：diff 落在 `src/features/**/components`、`src/components`、`messages/`、`src/routes/_public` 这类表现层，直接取；一旦碰到 `src/lib/db`、`migrations*`、`cloudflare.config.ts`、`src/lib/queue`、`src/lib/env`，**不要取**——那里是 D1 方言和 Workers 绑定，取回来整个运行时会被打回 Cloudflare。
+
+## 已知限制
+
+- Queues 在 EdgeOne 上没有对应服务，`handleQueueBatch` 未接线，依赖队列的邮件与 Webhook 派发在当前部署里不生效；登录只有 GitHub OAuth 一条路
+- 缓存 TTL 只有 60 秒，改完文章后大约一分钟才在全站生效（EdgeOne 没有 Cache-Tag 清除）
+- 限流是进程内的，多实例冷启动后各自从零开始计数
+- 没有 Cloudflare Image Resizing 的等价物，图片尺寸变体在上传阶段生成
+
+## 许可
+
+GPL-3.0-only，fork 自 [du2333/flare-stack-blog](https://github.com/du2333/flare-stack-blog)，原作者 akuang。上游的 `docs/adr/`、`GLOSSARY.md` 与业务代码一并保留。

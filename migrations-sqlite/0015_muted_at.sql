@@ -1,1 +1,0 @@
-ALTER TABLE `user` ADD `muted_at` integer;

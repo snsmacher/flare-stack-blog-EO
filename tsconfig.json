@@ -11,7 +11,7 @@
       "@/*": ["./src/*"],
       "tests/*": ["./tests/*"]
     },
-    "types": ["vite/client", "@cloudflare/vitest-plugin/types"],
+    "types": ["vite/client"],
     "allowImportingTsExtensions": true,
     "strict": true,
     "noFallthroughCasesInSwitch": true,
@@ -24,11 +24,6 @@
     "skipLibCheck": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".cloudflare/types/index.d.ts",
-    ".release-it.ts"
-  ],
+  "include": ["**/*.ts", "**/*.tsx", ".cloudflare/types/index.d.ts"],
   "exclude": ["tmp"]
 }
