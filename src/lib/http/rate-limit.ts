@@ -1,12 +1,12 @@
 import { getRateLimiter } from "@/lib/do/rate-limiter-binding";
 import type { Duration } from "@/lib/duration";
-import { rateLimitKeyFromIp } from "./rate-limit-key";
+import { clientIpFromHeaders, rateLimitKeyFromIp } from "./rate-limit-key";
 
 export async function enforceIpRateLimit(
   request: Request,
   options: { capacity: number; interval: Duration; key: string },
 ): Promise<Response | null> {
-  const ip = rateLimitKeyFromIp(request.headers.get("cf-connecting-ip"));
+  const ip = rateLimitKeyFromIp(clientIpFromHeaders(request.headers));
   const uniqueIdentifier = `${ip}:${options.key}`;
   const rateLimiter = await getRateLimiter(uniqueIdentifier);
   const result = rateLimiter.checkLimit({

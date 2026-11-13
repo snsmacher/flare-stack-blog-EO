@@ -30,7 +30,9 @@ function checkLimit(
   { capacity, interval, cost = 1 }: RateLimitOptions,
 ): { allowed: boolean; remaining: number; retryAfterMs: number } {
   if (cost > capacity) {
-    return { allowed: false, remaining: 0, retryAfterMs: -1 };
+    // A cost the bucket can never hold: back off a whole interval rather than
+    // handing the caller a negative number to sell as a Retry-After.
+    return { allowed: false, remaining: 0, retryAfterMs: ms(interval) };
   }
 
   const now = Date.now();
@@ -44,9 +46,12 @@ function checkLimit(
     return { allowed: true, remaining: capacity - cost, retryAfterMs: 0 };
   }
 
+  // Clock rollback (NTP correction, container migration) would otherwise
+  // drain the bucket by a negative refill and keep it empty until the clock
+  // catches back up.
   const currentTokens = Math.min(
     capacity,
-    state.tokens + (now - state.lastRefill) * rate,
+    state.tokens + Math.max(0, now - state.lastRefill) * rate,
   );
 
   if (currentTokens < cost) {

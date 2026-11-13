@@ -1,6 +1,29 @@
 /**
- * Turns the `cf-connecting-ip` header into a rate-limit key. IPv6 clients
- * control a whole /64, so every address in it must share one bucket.
+ * The header that carries the visitor IP on this deployment. EdgeOne sends
+ * `EO-Connecting-IP`; Cloudflare's is kept for parity. The last hop of
+ * `X-Forwarded-For` is the one the nearest trusted edge appended — earlier
+ * hops can be spoofed by the client — so it is the fallback, not the source.
+ */
+export function clientIpFromHeaders(headers: Headers): string | null {
+  for (const name of ["eo-connecting-ip", "cf-connecting-ip"]) {
+    const value = headers.get(name)?.trim();
+    if (value) return value;
+  }
+  const forwarded = headers.get("x-forwarded-for");
+  if (forwarded) {
+    const hops = forwarded
+      .split(",")
+      .map((hop) => hop.trim())
+      .filter(Boolean);
+    const nearest = hops[hops.length - 1];
+    if (nearest) return nearest;
+  }
+  return null;
+}
+
+/**
+ * Turns the visitor IP into a rate-limit key. IPv6 clients control a whole
+ * /64, so every address in it must share one bucket.
  */
 export function rateLimitKeyFromIp(header: string | null | undefined) {
   const raw = header?.trim().toLowerCase();

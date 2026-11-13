@@ -28,6 +28,7 @@ export function buildSnippet({
   };
 }) {
   const snippetSlice = options?.snippetSlice ?? SNIPPET_SLICE;
+  const snippetContext = options?.snippetContext ?? SNIPPET_CONTEXT;
   const scanLimit = options?.scanLimit ?? SCAN_LIMIT;
   const fuzzyMaxDistance = options?.fuzzyMaxDistance ?? FUZZY_MAX_DISTANCE;
 
@@ -59,11 +60,11 @@ export function buildSnippet({
 
   const { idx, len, token } = match;
 
-  const start = idx === -1 ? 0 : Math.max(0, idx - SNIPPET_CONTEXT);
+  const start = idx === -1 ? 0 : Math.max(0, idx - snippetContext);
   const end =
     idx === -1
-      ? Math.min(source.length, SNIPPET_SLICE)
-      : Math.min(source.length, idx + len + SNIPPET_CONTEXT);
+      ? Math.min(source.length, snippetSlice)
+      : Math.min(source.length, idx + len + snippetContext);
 
   return markTerms(source.slice(start, end), [token, ...activeTerms]);
 }

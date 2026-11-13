@@ -13,11 +13,12 @@ export type SearchDocumentRow = {
   tags: string[];
 };
 
-export async function upsertSearchDocument(
+/** A statement that writes one document over whatever the Post already has. */
+function upsertDocumentStatement(
   db: DB,
   document: SearchDocumentRow & { tokens: string },
 ) {
-  await db
+  return db
     .insert(SearchDocumentsTable)
     .values({
       postId: document.postId,
@@ -39,28 +40,41 @@ export async function upsertSearchDocument(
         tokens: document.tokens,
       },
     });
-  await bumpSearchIndexVersion(db);
+}
+
+export async function upsertSearchDocument(
+  db: DB,
+  document: SearchDocumentRow & { tokens: string },
+) {
+  // The document and the version move in one transaction: written apart, a
+  // failure between them leaves every instance serving the old index until
+  // some later bump — a freshly published Post would stay unsearchable.
+  await db.batch([
+    upsertDocumentStatement(db, document),
+    bumpSearchIndexVersionStatement(db, newSearchIndexVersion()),
+  ]);
 }
 
 /**
- * Removes the Post's document. The index version moves only when a document
- * was there, so deleting a Post that was never indexed leaves search caches be.
+ * Removes the Post's document and moves the index version in the same
+ * transaction. The version moves even when nothing was indexed — one extra
+ * reload costs less than a half-applied delete would.
  */
 export async function deleteSearchDocument(db: DB, postId: number) {
-  const deleted = await db
-    .delete(SearchDocumentsTable)
-    .where(eq(SearchDocumentsTable.postId, postId))
-    .returning({ postId: SearchDocumentsTable.postId });
-  if (deleted.length > 0) await bumpSearchIndexVersion(db);
+  await db.batch([
+    db.delete(SearchDocumentsTable).where(eq(SearchDocumentsTable.postId, postId)),
+    bumpSearchIndexVersionStatement(db, newSearchIndexVersion()),
+  ]);
 }
 
-// Each upsert carries 7 bound values and D1 caps a query at 100, so a delete
-// of this many ids is safe; the same size bounds one batch of upserts.
+// Each upsert carries 7 bound values; this size bounds one statement's
+// parameter count, not the batch's — `db.batch` runs all its statements in
+// one transaction, however many there are.
 const WRITE_BATCH = 25;
 
 /**
  * Writes the given documents over those already indexed and removes the
- * documents of `removedPostIds`, in batched D1 writes. The index version moves
+ * documents of `removedPostIds`, in one transaction. The index version moves
  * once, and only when something was given.
  */
 export async function applySearchDocuments(
@@ -71,40 +85,31 @@ export async function applySearchDocuments(
   },
 ) {
   const { documents, removedPostIds } = changes;
+  if (documents.length === 0 && removedPostIds.length === 0) return;
+
+  const statements: Array<unknown> = [];
   for (let i = 0; i < documents.length; i += WRITE_BATCH) {
-    const [first, ...rest] = documents
-      .slice(i, i + WRITE_BATCH)
-      .map((document) =>
-        db
-          .insert(SearchDocumentsTable)
-          .values(document)
-          .onConflictDoUpdate({
-            target: SearchDocumentsTable.postId,
-            set: {
-              slug: document.slug,
-              title: document.title,
-              summary: document.summary,
-              content: document.content,
-              tags: document.tags,
-              tokens: document.tokens,
-            },
-          }),
-      );
-    await db.batch([first, ...rest]);
+    for (const document of documents.slice(i, i + WRITE_BATCH)) {
+      statements.push(upsertDocumentStatement(db, document));
+    }
   }
   for (let i = 0; i < removedPostIds.length; i += WRITE_BATCH) {
-    await db
-      .delete(SearchDocumentsTable)
-      .where(
+    statements.push(
+      db.delete(SearchDocumentsTable).where(
         inArray(
           SearchDocumentsTable.postId,
           removedPostIds.slice(i, i + WRITE_BATCH),
         ),
-      );
+      ),
+    );
   }
-  if (documents.length > 0 || removedPostIds.length > 0) {
-    await bumpSearchIndexVersion(db);
-  }
+  // Documents, removals and the version bump all commit together: a failure
+  // midway rolls the whole set back instead of leaving instances serving a
+  // stale index over half-updated rows.
+  statements.push(
+    bumpSearchIndexVersionStatement(db, newSearchIndexVersion()),
+  );
+  await db.batch(statements);
 }
 
 const INSERT_BATCH = 10;
@@ -113,13 +118,20 @@ export async function replaceSearchDocuments(
   db: DB,
   documents: Array<SearchDocumentRow & { tokens: string }>,
 ) {
-  await db.delete(SearchDocumentsTable);
+  const statements: Array<unknown> = [db.delete(SearchDocumentsTable)];
   for (let i = 0; i < documents.length; i += INSERT_BATCH) {
-    await db
-      .insert(SearchDocumentsTable)
-      .values(documents.slice(i, i + INSERT_BATCH));
+    for (const document of documents.slice(i, i + INSERT_BATCH)) {
+      statements.push(upsertDocumentStatement(db, document));
+    }
   }
-  await bumpSearchIndexVersion(db);
+  // The delete, every insert and the version bump share one transaction: a
+  // concurrent rebuild or a failure midway can no longer leave an empty or
+  // half-filled table under an unmoved version — that combination would make
+  // fresh instances cache an empty index and site-wide search return nothing.
+  statements.push(
+    bumpSearchIndexVersionStatement(db, newSearchIndexVersion()),
+  );
+  await db.batch(statements);
 }
 
 /**
@@ -158,17 +170,21 @@ export async function readSearchIndexVersion(db: DB) {
   return row?.version ?? "0";
 }
 
-async function bumpSearchIndexVersion(db: DB) {
-  // Unique, not just a timestamp: the version is what tells a running instance
-  // its in-memory index is stale, so two writes inside the same millisecond
-  // must still produce two different versions — otherwise the second one
-  // leaves every instance serving the index from before the first.
-  const version = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  await db
+/** The meta upsert that moves the version, as one `db.batch` statement. */
+function bumpSearchIndexVersionStatement(db: DB, version: string) {
+  return db
     .insert(SearchIndexMetaTable)
     .values({ id: 1, version })
     .onConflictDoUpdate({
       target: SearchIndexMetaTable.id,
       set: { version },
     });
+}
+
+function newSearchIndexVersion() {
+  // Unique, not just a timestamp: the version is what tells a running instance
+  // its in-memory index is stale, so two writes inside the same millisecond
+  // must still produce two different versions — otherwise the second one
+  // leaves every instance serving the index from before the first.
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }

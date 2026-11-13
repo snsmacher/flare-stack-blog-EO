@@ -82,6 +82,8 @@ const TIER = {
  */
 let cached: SearchIndex | null = null;
 let building: Promise<SearchIndex> | null = null;
+/** The newest version any request has read; a load may still finish for a stale one. */
+let latestVersion: string | null = null;
 
 /**
  * The index for the version Postgres reports now. Reloads the documents when
@@ -89,6 +91,7 @@ let building: Promise<SearchIndex> | null = null;
  */
 export async function getSearchIndex(db: DB): Promise<SearchIndex> {
   const version = await readSearchIndexVersion(db);
+  latestVersion = version;
   if (cached?.version === version) return cached;
 
   if (building) {
@@ -99,7 +102,9 @@ export async function getSearchIndex(db: DB): Promise<SearchIndex> {
   const load = (async () => {
     const documents = (await readSearchDocuments(db)).map(toIndexedDocument);
     const index: SearchIndex = { version, documents };
-    cached = index;
+    // A slow load for a version that has since been superseded must not
+    // overwrite the newer index a faster load already cached.
+    if (latestVersion === version) cached = index;
     return index;
   })();
 

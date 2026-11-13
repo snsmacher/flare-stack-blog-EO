@@ -5,7 +5,10 @@ import { sendsApiKey } from "@/lib/auth/api-key-guard";
 import type { RateLimitOptions } from "@/lib/do/rate-limiter-binding";
 import { getRateLimiter } from "@/lib/do/rate-limiter-binding";
 import { serverEnv } from "@/lib/env/server.env";
-import { rateLimitKeyFromIp } from "@/lib/http/rate-limit-key";
+import {
+  clientIpFromHeaders,
+  rateLimitKeyFromIp,
+} from "@/lib/http/rate-limit-key";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import type { ApiContext, AuthedApiContext } from "./context";
 
@@ -147,7 +150,7 @@ export function withRateLimit(options: RateLimitOptions & { key?: string }) {
     .middleware(async ({ context, errors, next }) => {
       const session = await readSession(context);
       const scope = options.key || "default";
-      const ip = rateLimitKeyFromIp(context.headers.get("cf-connecting-ip"));
+      const ip = rateLimitKeyFromIp(clientIpFromHeaders(context.headers));
 
       const buckets = session
         ? [

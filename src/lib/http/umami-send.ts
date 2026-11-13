@@ -1,27 +1,48 @@
+import { clientIpFromHeaders } from "./rate-limit-key";
+
 /**
  * The request the `/api/send` proxy forwards to Umami.
  *
- * Workers rewrite `cf-connecting-ip` on outbound requests, so Umami would
- * record the Worker's own address. Umami prefers `payload.ip` in the body over
- * any header, and with it set looks the location up from that IP instead of
- * the Worker's `cf-ipcountry`. The visitor's IP goes there; a body that is not
- * an Umami event passes through unchanged.
+ * Only a small allowlist of client headers travels: cookies, API keys and the
+ * platform's own headers must not reach the statistics host.
+ *
+ * Umami prefers `payload.ip` in the body over any header, and with it set
+ * looks the location up from that IP instead of the proxy's address. The
+ * visitor's IP goes there; a body that is not an Umami event passes through
+ * unchanged.
  */
+const FORWARDED_HEADERS = [
+  "content-type",
+  "accept",
+  "accept-language",
+  "user-agent",
+] as const;
+
 export async function umamiSendRequest(
   request: Request,
   sendUrl: string,
 ): Promise<Request> {
-  const ip = request.headers.get("cf-connecting-ip");
-  if (request.method !== "POST" || !ip) return new Request(sendUrl, request);
+  const headers = pickForwardedHeaders(request.headers);
+  if (request.method !== "POST") {
+    return new Request(sendUrl, { method: request.method, headers });
+  }
 
+  const ip = clientIpFromHeaders(request.headers);
   const text = await request.text();
-  const headers = new Headers(request.headers);
-  headers.delete("content-length");
   return new Request(sendUrl, {
     method: "POST",
     headers,
-    body: withPayloadIp(text, ip),
+    body: ip ? withPayloadIp(text, ip) : text,
   });
+}
+
+function pickForwardedHeaders(headers: Headers): Headers {
+  const picked = new Headers();
+  for (const name of FORWARDED_HEADERS) {
+    const value = headers.get(name);
+    if (value) picked.set(name, value);
+  }
+  return picked;
 }
 
 function withPayloadIp(text: string, ip: string): string {
