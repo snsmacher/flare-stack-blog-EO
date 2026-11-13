@@ -9,6 +9,7 @@ import {
 } from "@/features/posts/data/post-media.data";
 import * as PostRevisionRepo from "@/features/posts/data/post-revisions.data";
 import * as PostRepo from "@/features/posts/data/posts.data";
+import { findPgError } from "@/lib/db/pg-error";
 import {
   pinnedPosts,
   homePosts,
@@ -198,7 +199,10 @@ async function bodyMediaReferences(
 }
 
 function isForeignKeyFailure(error: unknown) {
+  // PostgreSQL reports SQLSTATE 23503; the D1 wording stays as a fallback.
+  if (findPgError(error, "23503")) return true;
   for (let current = error; current instanceof Error; current = current.cause) {
+    if (/violates foreign key constraint/i.test(current.message)) return true;
     if (/FOREIGN KEY constraint failed/i.test(current.message)) return true;
   }
   return false;

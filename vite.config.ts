@@ -38,14 +38,16 @@ function bakeSecretsForSsr(): Plugin {
     // 容器刚起来那次往往是空的，维护页会一直报检查失败。
     "UPDATE_CHECK_REPO",
     "GITHUB_TOKEN",
+    // Turnstile 的服务端密钥走 serverEnv 运行时读，同样依赖上面的兜底逻辑。
+    "TURNSTILE_SECRET_KEY",
   ];
   const define: Record<string, string> = {};
   for (const name of names) {
-    // 数据库连接串走统一解析：控制台里还没改、或仍指着 Neon 时，构建期就换成
-    // 国内库，省掉一次人工改控制台 + 重新构建的往返。
+    // 数据库连接串原样烘焙；解析只做 trim，缺失时不烘焙、由运行时启动报错
+    // （见 src/lib/db/connection-target.ts）。
     const value =
       name === "DATABASE_URL" || name === "DATABASE_URL_DIRECT"
-        ? resolveDatabaseUrl(process.env[name])
+        ? (resolveDatabaseUrl(process.env[name]) ?? undefined)
         : process.env[name];
     if (value !== undefined) {
       define[`process.env.${name}`] = JSON.stringify(value);

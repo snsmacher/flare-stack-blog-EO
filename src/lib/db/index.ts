@@ -22,15 +22,31 @@ function normalizeConnectionString(raw: string): string {
 }
 
 function createDb() {
-  // resolveDatabaseUrl 兜住两种情况：控制台没配变量，或变量还指在 Neon 上。
-  // 详见 ./connection-target.ts。
+  // DATABASE_URL 是唯一来源（见 ./connection-target.ts）：缺失就直接失败，
+  // 而不是带着空配置继续启动、把第一个请求拖成莫名的连接错误。
   const raw = resolveDatabaseUrl(process.env.DATABASE_URL);
+  if (!raw) {
+    throw new Error(
+      "DATABASE_URL is not set; fill it in the platform's build environment variables",
+    );
+  }
 
   const pool = new Pool({
     connectionString: normalizeConnectionString(raw),
     max: Number(process.env.PG_POOL_MAX ?? 5),
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
+  });
+
+  // 空闲连接被服务端断开时 Pool 会发出 'error'；没有监听器的话 Node 把它当
+  // 未捕获异常，直接击穿云函数容器。
+  pool.on("error", (error) => {
+    console.error(
+      JSON.stringify({
+        message: "pg pool idle client error",
+        error: error.message,
+      }),
+    );
   });
 
   const db = drizzle(pool, { schema });

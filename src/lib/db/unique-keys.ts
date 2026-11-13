@@ -1,6 +1,7 @@
 import type { SQL } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
+import { findPgError } from "./pg-error";
 import { uniqueKeyOf } from "@/lib/unicode-text";
 
 /*
@@ -93,6 +94,15 @@ export async function settleUniqueKeys(db: DB, target: UniquelyKeyed) {
 
 /** Whether `error`, or an error it was caused by, is a duplicate `target`. */
 export function isUniqueViolation(error: unknown, target: UniquelyKeyed) {
+  // PostgreSQL reports SQLSTATE 23505 with the unique index's name
+  // (`posts_slug_key_unique` in the baseline migration).
+  if (
+    findPgError(error, "23505")?.constraint ===
+    `${target.table}_${target.key}_unique`
+  ) {
+    return true;
+  }
+  // The D1 wording stays as a fallback for errors that still carry it.
   const pattern = new RegExp(
     `UNIQUE constraint failed:.*\\b${target.table}\\.${target.value}(?:_key)?\\b`,
     "i",

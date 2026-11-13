@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/react";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { extractAllImageKeys } from "@/features/posts/utils/content";
+import { findPgError } from "@/lib/db/pg-error";
 import {
   MediaTable,
   PostMediaTable,
@@ -153,8 +154,14 @@ export function mediaReferenceGuards(
 
 /** Whether a batch failed because Media a guard records was deleted. */
 export function isMediaGone(error: unknown) {
+  // PostgreSQL reports SQLSTATE 23502 and names the column; the D1 wording
+  // stays as a fallback.
+  if (findPgError(error, "23502")?.column === "media_id") return true;
   for (let current = error; current instanceof Error; current = current.cause) {
     if (
+      /null value in column "media_id" of relation "post_media" violates not-null constraint/i.test(
+        current.message,
+      ) ||
       /NOT NULL constraint failed:\s*post_media\.media_id/i.test(
         current.message,
       )
