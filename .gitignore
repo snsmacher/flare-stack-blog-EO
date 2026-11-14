@@ -37,7 +37,10 @@ dist-old/
 /data/
 .srv.log
 .claude/
-.agents/
+# .agents/skills/ 里的 Agent Skill 要进仓库（发 Release 时打包上传），
+# 其余 .agents 下的本地文件照旧忽略。
+.agents/*
+!.agents/skills/
 .cloudflare/
 .workbuddy/
 .d1-export/

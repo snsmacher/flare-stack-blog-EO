@@ -119,6 +119,7 @@ jobs:
             --silent
 
       - name: 创建 Release
+        id: release
         if: steps.gate.outputs.release_exists == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -153,18 +154,23 @@ jobs:
             --title "$TAG" \
             --notes-file release-body.md \
             "${ARGS[@]}"
+          echo "created=true" >> "$GITHUB_OUTPUT"
           echo "已发布 $TAG"
 
       - name: 打包 Agent Skill 并上传到 Release
-        if: steps.gate.outputs.release_exists == 'false'
+        if: steps.release.outputs.created == 'true' || steps.gate.outputs.release_exists == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.ver.outputs.tag }}
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
+          if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx "flare-stack-blog-skills-v$VERSION.zip"; then
+            echo "skill zip 已在 Release 上，跳过"
+            exit 0
+          fi
           # 后台「Agent Skill」页的下载链接指向这个 zip（见
           # src/features/agent-skill/components/install-step.tsx）。
-          (cd .agents/skills && zip -r "$OLDPWD/flare-stack-blog-skills-v$VERSION.zip" flare-stack-blog)
-          gh release upload "$TAG" "flare-stack-blog-skills-v$VERSION.zip" --clobber
+          (cd .agents/skills && zip -qr "$GITHUB_WORKSPACE/flare-stack-blog-skills-v$VERSION.zip" flare-stack-blog)
+          gh release upload "$TAG" "$GITHUB_WORKSPACE/flare-stack-blog-skills-v$VERSION.zip" --clobber
           echo "已上传 flare-stack-blog-skills-v$VERSION.zip"
