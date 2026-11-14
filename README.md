@@ -218,4 +218,4 @@ git checkout v3.11.0 -- src/features/posts/components/...
 
 ## 许可
 
-GPL-3.0-only。原始版权归 akuang（[du2333/flare-stack-blog](https://github.com/du2333/flare-stack-blog)），本仓库的修改同样以 GPL-3.0 发布。
+GPL-3.0-only。原始版权归 du2333（[du2333/flare-stack-blog](https://github.com/du2333/flare-stack-blog)），本仓库的修改同样以 GPL-3.0 发布。
