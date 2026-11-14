@@ -165,6 +165,9 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
+          # 删除 tag 再重建会把 Release 打回草稿（草稿对未认证 API 不可见）：
+          # 重新发布它；对已发布的 Release 这是 no-op。
+          gh release edit "$TAG" --draft=false
           if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx "flare-stack-blog-skills-v$VERSION.zip"; then
             echo "skill zip 已在 Release 上，跳过"
             exit 0
