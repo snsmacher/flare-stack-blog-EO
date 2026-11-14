@@ -4,7 +4,7 @@
 
 [Flare Stack Blog](https://github.com/du2333/flare-stack-blog) 的 **EdgeOne 运行时版本**<br>
 基于 **腾讯云 EdgeOne Makers + PostgreSQL 17** 打造的全栈博客与 CMS 系统<br>
-TanStack Start 服务端渲染，推 `main` 即自动构建上线
+TanStack Start 服务端渲染
 
 [![License](https://img.shields.io/github/license/snsmacher/flare-stack-blog-EO?style=flat-square)](https://github.com/snsmacher/flare-stack-blog-EO/blob/main/LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/snsmacher/flare-stack-blog-EO?style=flat-square)](https://github.com/snsmacher/flare-stack-blog-EO/stargazers)
@@ -23,7 +23,7 @@ TanStack Start 服务端渲染，推 `main` 即自动构建上线
 Flare-Stack-Blog-EO 是一个独立发版的博客系统：领域模型、后台功能与 HTTP API 契约沿用上游 Flare Stack Blog，换掉的只是跑在哪、数据存哪——Cloudflare Workers → EdgeOne Makers（SSR 跑在 `ssr-node` 云函数），D1 → PostgreSQL 17。前端 React 19 + TanStack Start，界面承袭 [Fuwari](https://github.com/saicaca/fuwari) 的清新简约，浅色 / 深色主题与中英双语开箱即用。
 
 > [!NOTE]
-> 本仓库与上游**没有共同提交历史**，不追上游 merge，版本线从自己的 `1.0.0` 起算。本项目专为 EdgeOne Makers + PostgreSQL 运行时设计，不回 Cloudflare Workers。
+> 本仓库与上游**没有共同提交历史**，不追上游 merge，版本线从自己的 `1.0.0` 起算。本项目专为 EdgeOne Makers + PostgreSQL 运行时设计
 
 ## 架构
 
@@ -46,7 +46,7 @@ Flare-Stack-Blog-EO 是一个独立发版的博客系统：领域模型、后台
           └────────────────┘  └──────────────┘     └──────────────────┘
 ```
 
-核心依赖就这三个，外加 GitHub OAuth 负责登录、SMTP 与 Webhook 负责通知。没有 Redis、没有独立 API 服务、没有消息队列——通知与限流都在进程内完成。
+核心依赖就这三个，外加 GitHub OAuth 负责登录、SMTP 与 Webhook 负责通知。
 
 ## 与上游的关系
 
