@@ -1,1 +1,3 @@
 src/lib/orpc/contract.generated.json -merge linguist-generated=true
+.husky/** text eol=lf
+patches/*.patch -text

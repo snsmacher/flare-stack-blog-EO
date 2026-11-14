@@ -38,12 +38,28 @@ function renderWithTheme() {
   return () => screen.getByTestId("app-theme").textContent;
 }
 
+// Node 24 ships a `localStorage` global that needs --localstorage-file, and it
+// shadows the one jsdom would provide — under this vitest/jestdom setup the
+// property reads as undefined. The theme only needs get/set, so an in-memory
+// stub stands in for the real thing.
+const storage = new Map<string, string>();
+const localStorageStub = {
+  getItem: (key: string) => storage.get(key) ?? null,
+  setItem: (key: string, value: string) => void storage.set(key, String(value)),
+  removeItem: (key: string) => void storage.delete(key),
+  clear: () => storage.clear(),
+};
+
 beforeEach(() => {
-  localStorage.clear();
+  storage.clear();
+  vi.stubGlobal("localStorage", localStorageStub);
   document.documentElement.className = "";
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 it("follows an OS colour-scheme change while the theme is system", () => {
   const colorScheme = fakeColorScheme(false);

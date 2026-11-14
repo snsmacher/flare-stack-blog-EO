@@ -208,6 +208,25 @@ function isForeignKeyFailure(error: unknown) {
   return false;
 }
 
+/**
+ * A side step after the main operation has already committed — the Search
+ * Index update and cache invalidation. A failure there must not answer a
+ * publish or delete that succeeded with a 500: it logs, and the next version
+ * bump or rebuild catches up.
+ */
+async function bestEffort(name: string, step: () => Promise<unknown>) {
+  try {
+    await step();
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        message: `post-commit ${name} failed; the main operation is already committed`,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
+}
+
 /** A conditional write matched nothing: tell a missing Post from a newer save. */
 async function editConflictOrNotFound(db: DB, id: number) {
   const saveToken = await PostRepo.findPostSaveToken(db, id);
@@ -745,12 +764,16 @@ export async function deletePost(
 
   await PostRepo.deletePost(context.db, data.id);
 
-  // Whatever the slug is, even an empty one, the Post leaves the Search Index;
-  // the index then only moves if a document was there.
-  await SearchService.deleteIndex(context, { id: data.id });
+  // Whatever the slug is, even an empty one, the Post leaves the Search Index.
+  // The Post is already gone, so both side steps are best-effort.
+  await bestEffort("search index delete", () =>
+    SearchService.deleteIndex(context, { id: data.id }),
+  );
   const publicSlug = post.publicSlug ?? post.publicSnapshotJson?.slug;
   if (publicSlug !== undefined && publicSlug !== null) {
-    await invalidate.postDeleted(context, { slug: publicSlug });
+    await bestEffort("cache invalidation", () =>
+      invalidate.postDeleted(context, { slug: publicSlug }),
+    );
   }
 
   return ok({ success: true });
@@ -851,20 +874,26 @@ export async function publishPost(
   await createPublishRevision(context, publishedPost);
   await syncPostMedia(context.db, published);
 
-  await SearchService.upsert(context, {
-    id: publishedPost.id,
-    slug: snapshot.slug,
-    title: snapshot.title,
-    summary: snapshot.summary,
-    contentJson: snapshotContent,
-    tags: publishedPost.tags.map((tag) => tag.name),
-    category: publishedPost.category?.name ?? null,
-  });
+  await bestEffort("search index update", () =>
+    SearchService.upsert(context, {
+      id: publishedPost.id,
+      slug: snapshot.slug,
+      title: snapshot.title,
+      summary: snapshot.summary,
+      contentJson: snapshotContent,
+      tags: publishedPost.tags.map((tag) => tag.name),
+      category: publishedPost.category?.name ?? null,
+    }),
+  );
 
   if (previousPublicSlug && previousPublicSlug !== snapshot.slug) {
-    await invalidate.postDeleted(context, { slug: previousPublicSlug });
+    await bestEffort("cache invalidation", () =>
+      invalidate.postDeleted(context, { slug: previousPublicSlug }),
+    );
   }
-  await invalidate.postPublished(context, { slug: snapshot.slug });
+  await bestEffort("cache invalidation", () =>
+    invalidate.postPublished(context, { slug: snapshot.slug }),
+  );
 
   return ok({ success: true, saveToken: published.saveToken });
 }
@@ -890,8 +919,12 @@ export async function unpublishPost(
     return err({ reason: "POST_NOT_FOUND" });
   }
   await syncPostMedia(context.db, unpublished);
-  await SearchService.deleteIndex(context, { id: post.id });
-  await invalidate.postDeleted(context, { slug: publicSlug });
+  await bestEffort("search index delete", () =>
+    SearchService.deleteIndex(context, { id: post.id }),
+  );
+  await bestEffort("cache invalidation", () =>
+    invalidate.postDeleted(context, { slug: publicSlug }),
+  );
 
   return ok({ success: true, saveToken: unpublished.saveToken });
 }
@@ -907,8 +940,11 @@ async function setPostPinned(
   }
   // Pinning orders the whole public site, so a published Post purges at once;
   // a draft's pin only matters once it is published.
-  if (written.publicSlug) {
-    await invalidate.postPublished(context, { slug: written.publicSlug });
+  const pinnedSlug = written.publicSlug;
+  if (pinnedSlug) {
+    await bestEffort("cache invalidation", () =>
+      invalidate.postPublished(context, { slug: pinnedSlug }),
+    );
   }
   return ok({ success: true, saveToken: written.saveToken });
 }

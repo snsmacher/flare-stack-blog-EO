@@ -52,7 +52,6 @@ bun run db:generate  # 生成迁移 SQL 到 migrations/
 | `src/routes/_public/` | 前台页面。路由文件即页面，共享布局在 `_public/route.tsx` |
 | `src/routes/admin/` | 后台。导航在 `admin/route.tsx`，设置页在 `admin/settings/` |
 | `src/routes/api*.ts`、`rss.xml.ts`、`sitemap.xml.ts`、`stats.js.ts` | 非页面路由：接口、订阅源、umami 反代 |
-| `src/routes/diag.ts` | 环境变量诊断页，只有 `?k=smo-diag-2026` 能看 |
 | `src/features/*` | 领域模块，一个功能一个目录：posts、comments、media、search、auth、config、version… |
 | `src/lib/db/` | `pg` + drizzle(PG)。`db.batch()` 的手写事务也在这里 |
 | `src/lib/env/` | `nodeEnv` 是进程内替身（模拟 Workers 绑定）；`serverEnv` 会合并 `process.env` |
@@ -71,7 +70,7 @@ bun run db:generate  # 生成迁移 SQL 到 migrations/
 | 改文章编辑器行为 | `src/features/posts/components/post-editor/`，自动保存与发布在 `hooks/use-post-actions.tsx` |
 | 改缓存 TTL 或响应头 | `src/lib/cache/`、`src/lib/constants.ts`，改完看同目录 `*.test.ts` 的断言 |
 | 改搜索排序 | `src/features/search/engine.ts`，文件头有权重与设计取舍 |
-| 加环境变量 | 四处一起改：`vite.config.ts` 的烘焙名单、`src/lib/env/server.env.ts` 的 schema、`src/routes/diag.ts` 的键名清单、`.env.example` 与 README 的表 |
+| 加环境变量 | 三处一起改：`vite.config.ts` 的烘焙名单、`src/lib/env/server.env.ts` 的 schema、`.env.example` 与 README 的表；排查烘焙看构建日志的 `[bake-probe]` 一行 |
 | 改发版流程 | `.github/workflows/release.yml` + `scripts/release-notes.mjs` |
 
 ## 动这些地方之前先停一下
@@ -84,7 +83,7 @@ bun run db:generate  # 生成迁移 SQL 到 migrations/
 | `src/lib/env/` | 构建期烘焙 + 运行时 `process.env` 合并两条路都在用；只改一边会「本地好、线上空」 |
 | `cloudflare.config.ts` | 名字骗人：它是 `cf workers types` 生成 `Env` 类型的输入，删掉整个 `src/` 都编不过 |
 | `scripts/patch-eo-handler.mjs` | 打的是 `.edgeone/cloud-functions/ssr-node/handler.js`；适配器模板变了它会明确报 FATAL，别静默跳过 |
-| `src/lib/queue/` | `handleQueueBatch` 没有调用方，Queues 在 EdgeOne 上不存在 |
+| `src/lib/queue/` | Queues 在 EdgeOne 上不存在；`env.QUEUE` 是进程内替身（`src/lib/env/queue.ts`），`send` 即本地分发，无持久化无重试，别当真队列用 |
 | `src/lib/cache/`、`src/lib/constants.ts` | EdgeOne 只认 `Cache-Control`，`CDN-Cache-Control` 写了也白写 |
 | `migrations/` | 只有 PG 基线，没有自动迁移执行器；线上不会在部署时跑迁移 |
 

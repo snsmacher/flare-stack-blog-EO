@@ -43,14 +43,21 @@ export function createInProcessQueue(getEnv: () => Env): Queue<QueueMessage> {
     });
   };
 
-  return {
+  // 空的积压指标：本地分发没有队列可言，只是把接口形状补齐。
+  const noMetrics = {
+    metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
+  };
+
+  const queue: Queue<QueueMessage> = {
+    metrics: async () => noMetrics.metadata.metrics,
     send: (body) => {
       dispatchLogged([body]);
-      return Promise.resolve();
+      return Promise.resolve(noMetrics);
     },
     sendBatch: (items) => {
-      dispatchLogged(items.map((item) => item.body));
-      return Promise.resolve();
+      dispatchLogged([...items].map((item) => item.body));
+      return Promise.resolve(noMetrics);
     },
-  } as unknown as Queue<QueueMessage>;
+  };
+  return queue;
 }

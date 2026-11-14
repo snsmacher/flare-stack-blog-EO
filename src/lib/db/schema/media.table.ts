@@ -33,9 +33,10 @@ export const PostMediaTable = pgTable(
 );
 
 /**
- * The Media each Post Revision uses, body images and Post Cover alike. A
- * database trigger fills it whenever a revision is inserted (migration 0028),
- * so no write path has to remember to; deleting the revision drops its rows.
+ * The Media each Post Revision uses, body images and Post Cover alike. The
+ * write paths fill it themselves — `insertPostRevision` and the backup insert
+ * inside `restorePostSnapshot` (the D1 trigger that did this was lost in the
+ * PostgreSQL baseline migration); deleting the revision drops its rows.
  */
 export const PostRevisionMediaTable = pgTable(
   "post_revision_media",

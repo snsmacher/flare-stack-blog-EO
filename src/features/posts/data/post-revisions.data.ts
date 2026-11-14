@@ -1,13 +1,16 @@
 import { and, desc, eq, inArray, max, sql } from "drizzle-orm";
 import {
+  MediaTable,
   type PostRevisionReason,
   type PostRevisionSnapshot,
+  PostRevisionMediaTable,
   PostRevisionsTable,
   newSaveToken,
   PostsTable,
   PostTagsTable,
 } from "@/lib/db/schema";
 import { keyForWrite } from "@/lib/db/unique-keys";
+import { extractAllImageKeys } from "@/features/posts/utils/content";
 import { findPostById } from "./posts.data";
 
 function normalizeTagIds(tagIds: Array<number>) {
@@ -55,7 +58,43 @@ export async function insertPostRevision(
     })
     .returning();
 
+  await linkRevisionMedia(db, revision.id, data.snapshotJson);
   return revision;
+}
+
+/**
+ * Records which Media a revision's snapshot uses — body images and Cover
+ * alike — the job a D1 trigger used to do until the PostgreSQL baseline
+ * migration lost it. Without these rows, a Media only an older revision still
+ * shows counts as unreferenced and `deleteMediaIfUnused` removes it.
+ */
+async function linkRevisionMedia(
+  db: Pick<DB, "select" | "insert">,
+  revisionId: number,
+  snapshot: PostRevisionSnapshot,
+) {
+  const keys = extractAllImageKeys(snapshot.contentJson);
+  const bodyMediaIds =
+    keys.length > 0
+      ? (
+          await db
+            .select({ id: MediaTable.id })
+            .from(MediaTable)
+            .where(inArray(MediaTable.key, keys))
+        ).map((row) => row.id)
+      : [];
+  const mediaIds = [
+    ...new Set([
+      ...bodyMediaIds,
+      ...(snapshot.coverMediaId != null ? [snapshot.coverMediaId] : []),
+    ]),
+  ];
+  if (mediaIds.length === 0) return;
+
+  await db
+    .insert(PostRevisionMediaTable)
+    .values(mediaIds.map((mediaId) => ({ revisionId, mediaId })))
+    .onConflictDoNothing();
 }
 
 export async function findLatestPostRevision(
@@ -211,7 +250,7 @@ export async function restorePostSnapshot(
 
     if (updated.length === 0) return null;
 
-    await tx.execute(sql`
+    const backup = await tx.execute<{ id: number }>(sql`
       insert into post_revisions (post_id, reason, snapshot_json, snapshot_hash, restored_from_revision_id, created_at)
       select ${data.postId}, ${data.backupRevision.reason},
              ${JSON.stringify(data.backupRevision.snapshotJson)}::jsonb,
@@ -219,7 +258,12 @@ export async function restorePostSnapshot(
              ${data.backupRevision.restoredFromRevisionId ?? null}::integer,
              now()
        where ${restored}
+       returning id
     `);
+    const backupRevisionId = backup.rows[0]?.id;
+    if (backupRevisionId != null) {
+      await linkRevisionMedia(tx, backupRevisionId, data.backupRevision.snapshotJson);
+    }
 
     await tx
       .delete(PostTagsTable)

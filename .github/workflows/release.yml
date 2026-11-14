@@ -100,6 +100,12 @@ jobs:
             echo "Release $TAG 待创建"
           fi
 
+      - name: 从 CHANGELOG 生成发行说明
+        if: steps.gate.outputs.release_exists == 'false'
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: node scripts/release-notes.mjs "$VERSION" --out release-notes.md
+
       - name: 打 tag
         if: steps.gate.outputs.tag_exists == 'false'
         env:
@@ -111,12 +117,6 @@ jobs:
             -f ref="refs/tags/$TAG" \
             -f sha="$GITHUB_SHA" \
             --silent
-
-      - name: 从 CHANGELOG 生成发行说明
-        if: steps.gate.outputs.release_exists == 'false'
-        env:
-          VERSION: ${{ steps.ver.outputs.version }}
-        run: node scripts/release-notes.mjs "$VERSION" --out release-notes.md
 
       - name: 创建 Release
         if: steps.gate.outputs.release_exists == 'false'

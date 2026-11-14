@@ -252,15 +252,26 @@ export async function createComment(
     const { DOMAIN } = serverEnv(context.env);
     const commentPreview = data.content.slice(0, 100);
     const commenterName = context.session.user.name;
-    await publishNotificationEvent(context, {
-      type: "comment.admin_root_created",
-      data: {
-        postTitle: post.title,
-        commenterName,
-        commentPreview: `${commentPreview}${commentPreview.length >= 100 ? "..." : ""}`,
-        commentUrl: publicCommentUrl(DOMAIN, post.slug, comment.id),
-      },
-    });
+    // 评论已入库；通知是旁路，投递失败不该把发评论报成失败。
+    try {
+      await publishNotificationEvent(context, {
+        type: "comment.admin_root_created",
+        data: {
+          postTitle: post.title,
+          commenterName,
+          commentPreview: `${commentPreview}${commentPreview.length >= 100 ? "..." : ""}`,
+          commentUrl: publicCommentUrl(DOMAIN, post.slug, comment.id),
+        },
+      });
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          message: "comment notification queue failed",
+          commentId: comment.id,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
   }
 
   const { handledAt: _private, ...publicComment } = comment;

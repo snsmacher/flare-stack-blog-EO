@@ -67,7 +67,12 @@ if (POOL_FIXED_RE.test(src)) {
     src = src.replace(POOL_RE, "var $1 = (init_esm$2(), __toCommonJS(esm_exports$3).default);");
     console.log("[eo-env-patch] (2) pg-pool class-extends fix: applied ->", m[0].slice(0, 60) + "...");
   } else {
-    console.log("[eo-env-patch] (2) pg-pool pattern not found (upstream changed?) — verify manually");
+    // Not a maybe: without this fix the container 500s every request the
+    // moment it loads handler.js. A missing pattern means the adapter or
+    // esbuild changed — fail the build rather than ship a broken artifact.
+    console.error("[eo-env-patch] FATAL: pg-pool pattern not found — adapter template changed?");
+    console.error("[eo-env-patch] Without the fix the container 500s every request. Aborting.");
+    process.exit(1);
   }
 }
 

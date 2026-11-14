@@ -40,7 +40,7 @@
 | 限流 | Durable Object | 进程内令牌桶（单实例有效） |
 | 缓存 | `CDN-Cache-Control` + Cache-Tag 清除 | `Cache-Control: s-maxage`，靠短 TTL 自然过期 |
 | 搜索 | D1 FTS5 + 预分词列 | 进程内索引 + 子串匹配，见下文 |
-| 队列 | Queues | 无对应物，`src/lib/queue` 保留但未接线 |
+| 队列 | Queues | 进程内替身（`env.QUEUE.send` 即本地分发，无持久化） |
 
 业务层（`src/features/**/components`、`src/routes/_public`、`messages/`）与上游基本一致，差别集中在 `src/lib/db`、`src/lib/env`、`migrations/`、`cloudflare.config.ts` 这些贴着运行时的地方。
 
@@ -136,11 +136,13 @@ bun run build        # EdgeOne 适配器产物
 | `UMAMI_SRC` | 否 | umami 站点根地址，`/stats.js` 与 `/api/send` 靠它反代 |
 | `UMAMI_WEBSITE_ID` | 否 | 服务端查热度用，值与上面那个相同 |
 | `UMAMI_USERNAME` / `UMAMI_PASSWORD` | 否 | 自托管走账号密码换 token，不需要 API key |
+| `UMAMI_API_KEY` | 否 | umami Cloud 模式才需要；自托管用账号密码 |
+| `TURNSTILE_SECRET_KEY` / `VITE_TURNSTILE_SITE_KEY` | 否 | 评论等人机验证，两个要一起配；都不填则静默放行 |
 | `PG_POOL_MAX` | 否 | 连接池上限，默认 5。实例多时别调高，PG 侧连接数是硬上限 |
 | `UPDATE_CHECK_REPO` | 否 | `owner/repo`，维护页据此比对 release。不填即关闭更新检查 |
 | `EO_BLOB_PROJECT_ID` / `EO_BLOB_TOKEN` | 否 | 只在 EdgeOne 之外（本地 Node）跑时需要，线上由平台鉴权 |
 
-部署完先开 `https://<域名>/diag?k=smo-diag-2026`：它只报「有没有值、长度多少、URL 的 host」，不打印密钥，能一眼看出哪个变量没进构建。
+排查环境变量看构建日志：`[bake-probe]` 一行会列出哪些变量进了烘焙、哪些缺失，改完必须重新构建。
 
 ## 部署
 
@@ -202,7 +204,7 @@ git checkout v3.11.0 -- src/features/posts/components/...
 
 - **缓存主动失效**：现在靠 60 秒 TTL 自然过期，改完文章要等一下才全站生效。做法是 Blob 存一个代际键，SSR 读代际拼缓存键，发版或改稿时递增
 - **限流跨实例**：进程内令牌桶在冷启动后各算各的，量起来之后挪到 PG 计数
-- **通知派发**：没有队列服务，邮件与 Webhook 目前只在同步路径上触发，需要补一条可靠重试
+- **通知派发**：进程内队列没有持久化与重试，容器重启就丢，需要补一条可靠重试
 - **搜索换引擎**：文章量级上来后切 `pg_trgm`，接口保持不变
 - **后台 Agent Skill 页**：现在指向的安装地址还属于上游仓库，要改成对本仓库的发布物，或者先隐藏
 - **更新检查的未启用提示**：没配 `UPDATE_CHECK_REPO` 时，维护页点「检查」只报一句「检查失败」，应该直接说没启用
@@ -210,7 +212,7 @@ git checkout v3.11.0 -- src/features/posts/components/...
 
 ## 已知限制
 
-- 队列未接线：`src/lib/queue/` 保留但 `handleQueueBatch` 没有调用方，依赖队列的异步派发在当前部署里不生效
+- 队列是进程内替身：`env.QUEUE.send` 在本进程直接分发邮件与 Webhook（无持久化、无重试，容器重启即丢）
 - 缓存只有 60 秒粒度，EdgeOne 没有 Cache-Tag 清除能力
 - 限流是进程内的，多实例之间不共享计数
 - 没有 Cloudflare Image Resizing 的等价物，图片尺寸变体在上传阶段生成

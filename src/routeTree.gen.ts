@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as AtomDotxmlRouteImport } from './routes/atom[.]xml'
-import { Route as DiagRouteImport } from './routes/diag'
 import { Route as FeedDotjsonRouteImport } from './routes/feed[.]json'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
@@ -71,11 +70,6 @@ const AdminRouteRoute = AdminRouteRouteImport.update({
 const AtomDotxmlRoute = AtomDotxmlRouteImport.update({
   id: '/atom.xml',
   path: '/atom.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DiagRoute = DiagRouteImport.update({
-  id: '/diag',
-  path: '/diag',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedDotjsonRoute = FeedDotjsonRouteImport.update({
@@ -311,7 +305,6 @@ export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/atom.xml': typeof AtomDotxmlRoute
-  '/diag': typeof DiagRoute
   '/feed.json': typeof FeedDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/rss.xml': typeof RssDotxmlRoute
@@ -357,7 +350,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/atom.xml': typeof AtomDotxmlRoute
-  '/diag': typeof DiagRoute
   '/feed.json': typeof FeedDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/rss.xml': typeof RssDotxmlRoute
@@ -404,7 +396,6 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteRouteWithChildren
   '/admin': typeof AdminRouteRouteWithChildren
   '/atom.xml': typeof AtomDotxmlRoute
-  '/diag': typeof DiagRoute
   '/feed.json': typeof FeedDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/rss.xml': typeof RssDotxmlRoute
@@ -457,7 +448,6 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/atom.xml'
-    | '/diag'
     | '/feed.json'
     | '/robots.txt'
     | '/rss.xml'
@@ -503,7 +493,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/atom.xml'
-    | '/diag'
     | '/feed.json'
     | '/robots.txt'
     | '/rss.xml'
@@ -549,7 +538,6 @@ export interface FileRouteTypes {
     | '/_public'
     | '/admin'
     | '/atom.xml'
-    | '/diag'
     | '/feed.json'
     | '/robots.txt'
     | '/rss.xml'
@@ -601,7 +589,6 @@ export interface RootRouteChildren {
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AtomDotxmlRoute: typeof AtomDotxmlRoute
-  DiagRoute: typeof DiagRoute
   FeedDotjsonRoute: typeof FeedDotjsonRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   RssDotxmlRoute: typeof RssDotxmlRoute
@@ -635,13 +622,6 @@ declare module '@tanstack/react-router' {
       path: '/atom.xml'
       fullPath: '/atom.xml'
       preLoaderRoute: typeof AtomDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/diag': {
-      id: '/diag'
-      path: '/diag'
-      fullPath: '/diag'
-      preLoaderRoute: typeof DiagRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feed.json': {
@@ -1116,7 +1096,6 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRouteRoute: PublicRouteRouteWithChildren,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   AtomDotxmlRoute: AtomDotxmlRoute,
-  DiagRoute: DiagRoute,
   FeedDotjsonRoute: FeedDotjsonRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   RssDotxmlRoute: RssDotxmlRoute,

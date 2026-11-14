@@ -64,17 +64,28 @@ export async function submitFriendLink(
     : await FriendLinkRepo.insertFriendLink(context.db, values);
   if (!friendLink) return err({ reason: "INVALID_STATE" });
 
-  const { DOMAIN } = serverEnv(context.env);
-  await publishNotificationEvent(context, {
-    type: "friend_link.submitted",
-    data: {
-      siteName: data.siteName,
-      siteUrl: data.siteUrl,
-      description: data.description || "",
-      submitterName: context.session.user.name,
-      reviewUrl: `https://${DOMAIN}/admin/friend-links`,
-    },
-  });
+  // 申请已入库；通知是旁路，投递失败不该把提交报成失败。
+  try {
+    const { DOMAIN } = serverEnv(context.env);
+    await publishNotificationEvent(context, {
+      type: "friend_link.submitted",
+      data: {
+        siteName: data.siteName,
+        siteUrl: data.siteUrl,
+        description: data.description || "",
+        submitterName: context.session.user.name,
+        reviewUrl: `https://${DOMAIN}/admin/friend-links`,
+      },
+    });
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        message: "friend-link notification queue failed",
+        friendLinkId: friendLink.id,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
 
   return ok(friendLink);
 }
@@ -160,18 +171,29 @@ export async function approveFriendLink(
     friendLink.userId,
   );
   if (recipient) {
-    const { DOMAIN } = serverEnv(context.env);
-    await publishNotificationEvent(
-      context,
-      {
-        type: "friend_link.approved",
-        data: {
-          siteName: friendLink.siteName,
-          blogUrl: `https://${DOMAIN}`,
+    // 审核结果已生效；通知是旁路，投递失败不该把审核报成失败。
+    try {
+      const { DOMAIN } = serverEnv(context.env);
+      await publishNotificationEvent(
+        context,
+        {
+          type: "friend_link.approved",
+          data: {
+            siteName: friendLink.siteName,
+            blogUrl: `https://${DOMAIN}`,
+          },
         },
-      },
-      { to: recipient },
-    );
+        { to: recipient },
+      );
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          message: "friend-link notification queue failed",
+          friendLinkId: friendLink.id,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
   }
 
   return ok(updated);
@@ -203,17 +225,27 @@ export async function rejectFriendLink(
     friendLink.userId,
   );
   if (recipient) {
-    await publishNotificationEvent(
-      context,
-      {
-        type: "friend_link.rejected",
-        data: {
-          siteName: friendLink.siteName,
-          rejectionReason: data.rejectionReason,
+    try {
+      await publishNotificationEvent(
+        context,
+        {
+          type: "friend_link.rejected",
+          data: {
+            siteName: friendLink.siteName,
+            rejectionReason: data.rejectionReason,
+          },
         },
-      },
-      { to: recipient },
-    );
+        { to: recipient },
+      );
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          message: "friend-link notification queue failed",
+          friendLinkId: friendLink.id,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
   }
 
   return ok(updated);

@@ -12,15 +12,37 @@
 - `scripts/release-notes.mjs`：从本文件截取某一版作为发行说明，缺条目或条目为空时直接失败，不会发出空白 Release
 - `docs/deployment.md` 部署指南：数据库两条连接串、建表、Makers 项目配置、环境变量与烘焙、GitHub OAuth、域名、上线自检、回滚、排查手册
 - `AGENTS.md` 重写为项目指令入口（ZCode 只读 `AGENTS.md` 与 `~/.zcode/AGENTS.md`，不读 `CLAUDE.md`）：命令表、目录地图、常见改动入口、硬性约束、本机环境的坑
+- `env.QUEUE` 进程内替身（`src/lib/env/queue.ts`）：EdgeOne 没有 Queues，此前所有 `QUEUE.send` 直接 TypeError——游客评论、友链提交/审核在主操作落库后报 500，邮箱验证码登录整体不可用。现在 `send` 即本地分发到邮件/Webhook 消费者（无持久化无重试，容器重启即丢），评论/友链/OTP 五个调用点再加 try/catch 兜底
 
 ### 变更
 
 - `bun run build` 现在自带 EdgeOne 产物补丁，`build:eo` 保留为别名。此前只有 `build:eo` 会跑 `patch-eo-handler.mjs`，控制台若填的是 `build`，`handler.js` 就少了 env 注入与 pg-pool 修复
+- 限流键的取 IP 来源改为 `EO-Connecting-IP` → `cf-connecting-ip` → `X-Forwarded-For` 最后一跳：此前只读 Cloudflare 专有头，EdgeOne 上取不到，全站匿名访客共享同一个 `"unknown"` 桶（登录接口全站 5 次/分钟即拒）
+- `/stats.js` 与 `/api/send` 反代改为响应头白名单并加 10 秒超时：此前整体透传上游头，undici 透明解压后 `content-encoding` 与明文体错配会让统计脚本解码失败；`/api/send` 也不再把访客 Cookie、API Key 等转发给 umami，`UMAMI_SRC` 带子路径时不再被丢掉
+- 发布/删除/下架/置顶后的搜索索引与缓存失效改为尽力而为（失败记日志），不再让已成功的主操作报 500
+- `DATABASE_URL` 缺失不再兜底任何硬编码连接串（该串含生产库凭据且已随仓库泄露，密码应轮换）：运行时启动直接报错，`resolveDatabaseUrl` 同步删掉「指向 Neon 就换国内库」的静默替换
+- `TURNSTILE_SECRET_KEY` 补进构建期烘焙名单；`.env.example` 补上 `UMAMI_API_KEY`、`VITE_TURNSTILE_SITE_KEY`、Turnstile 两个 key
+- `patch-eo-handler.mjs` 的 pg-pool 补丁从「告警但继续构建」改为 FATAL 中止：缺了它产物全站 500，静默放行等于带病上线
+- Release 工作流把「生成发行说明」挪到「打 tag」之前：CHANGELOG 缺条目时不再留下一个指向未发布提交的 tag
 
 ### 修复
 
 - `UPDATE_CHECK_REPO` / `GITHUB_TOKEN` 之前没进构建期烘焙名单，在 EdgeOne 控制台配了也可能读不到（容器启动时 `process.env` 为空），维护页只会报检查失败
 - `/diag?k=` 的键名清单补上这两个变量，方便排查
+- PG 错误映射补齐：唯一键冲突（SQLSTATE 23505）、NOT NULL（23502）、外键（23503）此前按 SQLite 文案匹配、永不命中——并发建稿/改名/发布撞 slug 或重名时一律 500，而不是约定的 409 或自动重试
+- `post_revision_media` 重新接线：PG 基线丢了上游 D1 触发器，该表永远没有新行，「仅被历史版本引用」的媒体会被 `deleteMediaIfUnused` 当成未引用删掉，恢复旧版本后正文全是死链；改由 `insertPostRevision` 与 `restorePostSnapshot` 在写路径登记正文图片与封面
+- 搜索写入事务化：文档写入与版本号 bump 合进同一事务，全量重建原子化——此前重建失败会留下空表/残表加旧版本号的组合，新实例把空索引缓存住，全站搜索返回 0 结果
+- 搜索引擎并发重载的覆盖竞态：慢的旧版本加载完成后会把新索引覆盖回旧值（能自愈，但会瞬时服务旧索引）
+- `search.utils.ts` 的 `snippetContext` 自定义选项此前从未被读取，命中路径一直用模块常量
+- 令牌桶对时钟回拨（NTP 校准、容器迁移）不再扣币；`cost > capacity` 死路径不再返回负的 `retryAfterMs`
+- 站点文档响应删掉硬编码的 `CDN-Cache-Control`（值固定为 HTML 档，与各文档实际 `Cache-Control` 漂移；EdgeOne 不读它）
+- `theme-provider` 测试在 Node 24 下因内置 `localStorage` 访问器压住 jsdom 实现而失败，改用内存桩
+- `auth:generate-schema` 的 better-auth 适配器从 sqlite 方言改为 pg：此前谁跑一次就会把 `auth.table.ts` 重写回 sqliteTable
+
+### 移除
+
+- `/diag` 诊断路由删除：访问令牌硬编码在公开源码里，等于人人可看（环境变量有无/长度、数据库 host、错误原文、触发缓存失效）；环境变量排查改看构建日志的 `[bake-probe]` 行
+- 数据库连接串的硬编码兜底与 Neon 静默替换逻辑（`src/lib/db/connection-target.ts`）
 
 ## [1.0.0] - 2026-11-08
 

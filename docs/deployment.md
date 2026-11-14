@@ -110,6 +110,8 @@ Makers 控制台 → 新建项目 → 导入 Git 仓库 → 选本仓库的 `mai
 | `UMAMI_SRC` | 否 | umami 站点根地址；`/stats.js` 与 `/api/send` 靠它反代 |
 | `UMAMI_WEBSITE_ID` | 否 | 服务端查文章热度用，值同上 |
 | `UMAMI_USERNAME` / `UMAMI_PASSWORD` | 否 | 自托管 umami 用账号密码换 token，不需要 API key |
+| `UMAMI_API_KEY` | 否 | umami Cloud 模式才需要；自托管用账号密码 |
+| `TURNSTILE_SECRET_KEY` / `VITE_TURNSTILE_SITE_KEY` | 否 | 评论等人机验证，两个要一起配；都不填则静默放行 |
 | `PG_POOL_MAX` | 否 | 连接池上限，默认 5。实例多时别调高 |
 | `UPDATE_CHECK_REPO` | 否 | `owner/repo`，后台维护页据此比对 release；不填即关闭更新检查 |
 | `EO_BLOB_PROJECT_ID` / `EO_BLOB_TOKEN` | 否 | **只在 EdgeOne 之外**（本地 Node、脚本）需要；线上由平台自己鉴权 |
@@ -124,9 +126,8 @@ curl -sI https://<域名>/rss.xml | head -1              # 200
 
 浏览器里再开：
 
-1. `https://<域名>/diag?k=smo-diag-2026` — 只报「有没有值、长度多少、URL 的 host」，不打印密钥。`processEnv` 与 `contextEnv` 两栏对照，一眼看出哪个变量没进构建。
-2. 首页能出文章列表 → 说明数据库通了。
-3. 点登录 → GitHub 授权 → 回到 `/admin`。**第一个登录成功的账号自动成为管理员**（`databaseHooks.user.create.before` 里有这段逻辑），后面的人只能是普通用户。
+1. 首页能出文章列表 → 说明数据库通了。
+2. 点登录 → GitHub 授权 → 回到 `/admin`。**第一个登录成功的账号自动成为管理员**（`databaseHooks.user.create.before` 里有这段逻辑），后面的人只能是普通用户。
 
 ### 3.4 GitHub OAuth
 
@@ -189,11 +190,12 @@ EdgeOne 的构建产物不留在仓库里（`.edgeone/`、`dist/` 都被忽略�
 | 症状 | 大概率原因 | 处理 |
 | --- | --- | --- |
 | 全站 500，日志里有 `Class extends value #<Object> is not a constructor` | `handler.js` 没打 pg-pool 补丁 | 确认构建命令是 `bun run build`（含补丁），看构建日志里有没有 `[eo-env-patch]` 两行 |
-| 全站 500，日志里是 `Invalid environment variables` | 烘焙漏了变量（常见于 `BETTER_AUTH_SECRET`、`DOMAIN`） | 开 `/diag?k=smo-diag-2026` 对照，补齐后重新构建 |
-| 页面能开但没数据 | `DATABASE_URL` 指错库、或连到了没建表的库 | `/diag` 看 host；本地用同一条串跑 `bun run db:push` 复查 |
+| 全站 500，日志里是 `Invalid environment variables` | 烘焙漏了变量（常见于 `BETTER_AUTH_SECRET`、`DOMAIN`） | 对照 `.env.example` 与 README 变量表补齐；构建日志的 `[bake-probe]` 一行列出了 present/missing 名单，补齐后重新构建 |
+| 全站 500，日志里是 `DATABASE_URL is not set` | 构建环境变量没配 `DATABASE_URL` | 控制台补上后重新构建；本仓库不再内置任何兜底连接串 |
+| 页面能开但没数据 | `DATABASE_URL` 指错库、或连到了没建表的库 | 本地用同一条串跑 `bun run db:push` 复查；函数日志里有 PG 连接错误详情 |
 | 登录后回到首页但仍是未登录 | `BETTER_AUTH_URL` 带尾斜杠、或与 `DOMAIN` 不一致 | 两者改成同一域名，重新构建；浏览器清 cookie 再试 |
 | GitHub 回调报 `redirect_uri_mismatch` | 回调地址与实际域名不符 | OAuth App 里改成 `https://<域名>/api/auth/callback/github` |
-| `https://<域名>/stats.js` 404 | `UMAMI_SRC` 没进构建 | 填好后重新构建，`/diag` 里应能看到有值 |
+| `https://<域名>/stats.js` 404 | `UMAMI_SRC` 没进构建 | 填好后重新构建；构建日志 `[bake-probe]` 的 present 里应有它 |
 | 搜索报「搜索功能暂不可用」 | 进程内索引读库失败 | 看函数日志的 SQL 报错；搜索走的是 `src/features/search/engine.ts`，不是 PG 全文检索 |
 | 上传图片失败 | Blob 命名空间问题 | 线上靠平台鉴权，本地才需要 `EO_BLOB_PROJECT_ID` / `EO_BLOB_TOKEN` |
 | 改了文章要等一会才生效 | 页面缓存 60 秒自然过期，EdgeOne 没有 Cache-Tag 清除 | 等 TTL，或按路线图做「缓存主动失效」 |

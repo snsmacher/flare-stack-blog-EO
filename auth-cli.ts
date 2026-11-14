@@ -11,7 +11,10 @@ export const auth = betterAuth({
   database: drizzleAdapter(
     {},
     {
-      provider: "sqlite",
+      // The real runtime uses PostgreSQL (src/lib/auth/auth.server.ts);
+      // generating with the sqlite dialect would overwrite auth.table.ts
+      // with sqliteTable definitions.
+      provider: "pg",
     },
   ),
 });
