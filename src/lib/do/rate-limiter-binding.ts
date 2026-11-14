@@ -17,9 +17,15 @@ export type RateLimitOptions = {
 const buckets = new Map<string, BucketState>();
 const SWEEP_THRESHOLD = 10_000;
 const STALE_AFTER_MS = 3_600_000;
+// 平时也按节律兜底扫一轮：IP 洪峰把桶顶到几万个之前，内存就有界。
+const SWEEP_INTERVAL_MS = 5 * 60_000;
+let lastSweepAt = 0;
 
 function sweep(now: number) {
-  if (buckets.size < SWEEP_THRESHOLD) return;
+  const due =
+    buckets.size >= SWEEP_THRESHOLD || now - lastSweepAt >= SWEEP_INTERVAL_MS;
+  if (!due || buckets.size === 0) return;
+  lastSweepAt = now;
   for (const [key, bucket] of buckets) {
     if (now - bucket.lastRefill > STALE_AFTER_MS) buckets.delete(key);
   }

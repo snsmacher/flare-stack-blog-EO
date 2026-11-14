@@ -61,7 +61,7 @@ async function getEmailSite(db: DB): Promise<EmailSite> {
   return emailSiteOf(resolveSiteConfig(await ConfigRepo.getSystemConfig(db)));
 }
 
-export function getAuth({ db, env }: { db: DB; env: Env }) {
+function buildAuth({ db, env }: { db: DB; env: Env }) {
   const {
     BETTER_AUTH_SECRET,
     BETTER_AUTH_URL,
@@ -197,30 +197,23 @@ export function getAuth({ db, env }: { db: DB; env: Env }) {
   });
 }
 
+// Building an instance costs milliseconds of CPU, and SSR evaluates a fresh
+// oRPC context for every procedure call. On Workers each invocation carried
+// its own env, so instances were keyed per request; here `getDb` memoizes the
+// pool and `nodeEnv` is module state, so one instance serves the whole
+// process and every request — oRPC context and auth routes alike — reuses it.
+let authInstance: ReturnType<typeof buildAuth> | null = null;
+
+/** The process's Better Auth instance, built on first use. */
+export function getAuth({ db, env }: { db: DB; env: Env }) {
+  authInstance ??= buildAuth({ db, env });
+  return authInstance;
+}
+
 export type Auth = ReturnType<typeof getAuth>;
 export type Session = Auth["$Infer"]["Session"];
 
-// Building an instance costs milliseconds of CPU, and SSR evaluates a fresh
-// oRPC context for every procedure call, so instances are keyed by the
-// request's ExecutionContext: each Worker invocation gets its own, and every
-// context and the session query within it share it. An instance never
-// outlives its request, since its hooks hold that request's env and db.
-const authByRequest = new WeakMap<ExecutionContext<unknown>, Auth>();
-
-/** The request's Better Auth instance, built on first use. */
-export function getRequestAuth({
-  db,
-  env,
-  executionCtx,
-}: {
-  db: DB;
-  env: Env;
-  executionCtx: ExecutionContext<unknown>;
-}): Auth {
-  let auth = authByRequest.get(executionCtx);
-  if (!auth) {
-    auth = getAuth({ db, env });
-    authByRequest.set(executionCtx, auth);
-  }
-  return auth;
+/** The request's Better Auth instance — the same singleton, kept for call-site clarity. */
+export function getRequestAuth({ db, env }: { db: DB; env: Env }): Auth {
+  return getAuth({ db, env });
 }

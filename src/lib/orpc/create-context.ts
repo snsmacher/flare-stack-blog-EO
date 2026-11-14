@@ -16,7 +16,7 @@ export function createApiContext(
     // evaluates it once a procedure actually reads the session.
     getAuth: async () => {
       const { getRequestAuth } = await import("@/lib/auth/auth.server");
-      return getRequestAuth({ db, env, executionCtx });
+      return getRequestAuth({ db, env });
     },
   };
 }

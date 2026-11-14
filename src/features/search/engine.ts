@@ -1,5 +1,5 @@
 import {
-  readSearchDocuments,
+  readSearchDocumentPage,
   readSearchIndexVersion,
   type SearchDocumentRow,
 } from "@/features/search/data/search.data";
@@ -29,8 +29,6 @@ import { queryTerms } from "@/features/search/tokenize";
 
 /** A document with the lower-cased copies the matcher compares against. */
 type IndexedDocument = SearchDocumentRow & {
-  /** Title, tags, summary and content in one string, for the presence test. */
-  haystack: string;
   lower: {
     title: string;
     tags: string;
@@ -57,6 +55,9 @@ const FIELD_WEIGHT = {
 
 /** Repeated mentions keep counting up to this many, then stop. */
 const MAX_OCCURRENCES = 3;
+
+/** 索引装载的分页大小：重建时的瞬态内存只多这一页原始行。 */
+const INDEX_LOAD_PAGE = 200;
 
 /** The whole query counts for more than any one of its words. */
 const FULL_QUERY_WEIGHT = 2;
@@ -100,7 +101,16 @@ export async function getSearchIndex(db: DB): Promise<SearchIndex> {
   }
 
   const load = (async () => {
-    const documents = (await readSearchDocuments(db)).map(toIndexedDocument);
+    // 页读代替全表一次拉回：重建期间只有一页原始行与逐渐长成的索引同时在
+    // 内存里，全量快照的瞬态峰值少掉一份。
+    const documents: Array<IndexedDocument> = [];
+    let afterPostId = 0;
+    for (;;) {
+      const page = await readSearchDocumentPage(db, afterPostId, INDEX_LOAD_PAGE);
+      if (page.length === 0) break;
+      for (const row of page) documents.push(toIndexedDocument(row));
+      afterPostId = page[page.length - 1]!.postId;
+    }
     const index: SearchIndex = { version, documents };
     // A slow load for a version that has since been superseded must not
     // overwrite the newer index a faster load already cached.
@@ -159,7 +169,7 @@ export function matchSearchIndex(
     score: number;
   }> = [];
   for (const document of index.documents) {
-    if (!needles.every((needle) => document.haystack.includes(needle))) {
+    if (!needles.every((needle) => anyFieldIncludes(document, needle))) {
       continue;
     }
     const tier = tierOf(document, full);
@@ -196,18 +206,30 @@ function tierOf(document: IndexedDocument, full: string) {
 }
 
 function toIndexedDocument(row: SearchDocumentRow): IndexedDocument {
-  const lower = {
-    title: row.title.toLowerCase(),
-    tags: row.tags.join(" ").toLowerCase(),
-    summary: row.summary.toLowerCase(),
-    content: row.content.toLowerCase(),
-  };
-
   return {
     ...row,
-    lower,
-    haystack: `${lower.title}\n${lower.tags}\n${lower.summary}\n${lower.content}`,
+    lower: {
+      title: row.title.toLowerCase(),
+      tags: row.tags.join(" ").toLowerCase(),
+      summary: row.summary.toLowerCase(),
+      content: row.content.toLowerCase(),
+    },
   };
+}
+
+/**
+ * Whether any one field contains `needle` — the presence test the old
+ * `haystack` join used to serve, minus the third full-content copy it cost.
+ * A needle spanning two fields never matched the join anyway (it separates
+ * fields with newlines), so per-field is the same rule without the memory.
+ */
+function anyFieldIncludes(document: IndexedDocument, needle: string) {
+  return (
+    document.lower.title.includes(needle) ||
+    document.lower.tags.includes(needle) ||
+    document.lower.summary.includes(needle) ||
+    document.lower.content.includes(needle)
+  );
 }
 
 /** How much every field of `document` says `needle`, weights included. */

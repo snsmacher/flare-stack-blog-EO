@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, gt, inArray } from "drizzle-orm";
 import {
   SearchDocumentsTable,
   SearchIndexMetaTable,
@@ -135,13 +135,15 @@ export async function replaceSearchDocuments(
 }
 
 /**
- * Every document in the index, oldest Post first. Read in one query, because
- * the search engine keeps them in memory and only reloads when the index
- * version moves (see `search/engine.ts`); searching narrows this set in the
- * process rather than in the database.
+ * One page of index documents, in post_id order after `afterPostId`. The
+ * engine loads the index page by page instead of one full-table query, so a
+ * rebuild never holds the whole raw result set and the growing index at the
+ * same time (see `search/engine.ts`).
  */
-export async function readSearchDocuments(
+export async function readSearchDocumentPage(
   db: DB,
+  afterPostId: number,
+  limit: number,
 ): Promise<SearchDocumentRow[]> {
   const rows = await db
     .select({
@@ -153,7 +155,9 @@ export async function readSearchDocuments(
       tags: SearchDocumentsTable.tags,
     })
     .from(SearchDocumentsTable)
-    .orderBy(SearchDocumentsTable.postId);
+    .where(gt(SearchDocumentsTable.postId, afterPostId))
+    .orderBy(SearchDocumentsTable.postId)
+    .limit(limit);
 
   return rows.map((row) => ({
     ...row,

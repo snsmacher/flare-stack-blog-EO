@@ -12,7 +12,6 @@ export async function getRequestSession() {
   const auth = getRequestAuth({
     db: getDb(context.env),
     env: context.env,
-    executionCtx: context.executionCtx,
   });
   return auth.api.getSession({
     headers: getRequestHeaders(),
