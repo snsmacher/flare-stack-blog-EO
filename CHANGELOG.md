@@ -6,6 +6,8 @@
 
 ## [未发布]
 
+## [1.1.0] - 2026-11-14
+
 ### 新增
 
 - GitHub Actions 自动发版（`.github/workflows/release.yml`）：推 `main` 时若 `package.json` 的版本还没有对应 tag，自动打 `vX.Y.Z` 并按本文件创建 Release；只改代码不动版本号不会重复发版
