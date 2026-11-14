@@ -6,6 +6,16 @@
 
 ## [未发布]
 
+## [1.1.1] - 2026-11-14
+
+### 变更
+
+- 修订快照滚动保留（`docs/tasks/revision-retention.md`）：`post_revisions` 每篇文章每类 reason 只留最近 2 条，且单篇单类累计超过 256 KB 后继续从最旧的删，永远至少保留 1 条——publish 的最新一条是「未发布改动」的对比基线。auto 的上限从 30 收紧到 2；裁剪挂在三个写入点（自动快照、发布、恢复备份）插入之后，单条 DELETE 自算保留集，没有「先查再删」的并发窗口，恢复备份的裁剪与其备份插入同事务。删修订随之 cascade 清掉 `post_revision_media` 关联行，媒体文件本体不受影响
+
+### 新增
+
+- `scripts/trim-revisions-once.mjs`：存量修订一次性清理脚本。默认只读摸底（库总量、post_revisions 体积、按 reason 的条数与快照大小、将被删的条数），加 `--yes` 才执行删除。注意删除后空间由 autovacuum 回收，`pg_database_size` 不会立刻下降，验收看 `pg_total_relation_size('post_revisions')`
+
 ## [1.1.0] - 2026-11-14
 
 ### 新增

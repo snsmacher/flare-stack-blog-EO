@@ -279,6 +279,9 @@ async function createPublishRevision(
       coverMediaId: post.coverMediaId ?? null,
     },
   });
+
+  // publish 修订同样受滚动配额约束，插入后立即裁一轮。
+  await PostRevisionRepo.trimPostRevisions(context.db, post.id);
 }
 
 export function getHomePosts(

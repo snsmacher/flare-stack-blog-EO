@@ -24,7 +24,6 @@ import { ms } from "@/lib/duration";
 import { err, ok } from "@/lib/errors";
 
 const AUTO_SNAPSHOT_MIN_INTERVAL = "2m";
-const MAX_AUTO_REVISIONS_PER_POST = 30;
 
 function toRevisionSnapshot(
   post: Awaited<ReturnType<typeof PostRepo.findPostById>>,
@@ -163,11 +162,9 @@ export async function createPostRevision(
     snapshotHash,
   });
 
-  if (reason === "auto") {
-    await PostRevisionRepo.trimAutoRevisions(context.db, data.postId, {
-      keep: MAX_AUTO_REVISIONS_PER_POST,
-    });
-  }
+  // 任何 reason 落库后都滚一轮配额：auto 不再单独放水（上限从 30 收紧到
+  // REVISION_RETENTION 的统一值），publish 与 restore_backup 从此不再无限累积。
+  await PostRevisionRepo.trimPostRevisions(context.db, data.postId);
 
   return ok<CreatePostRevisionResult>({
     created: true,

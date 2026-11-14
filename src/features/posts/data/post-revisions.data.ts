@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, max, sql } from "drizzle-orm";
 import {
   MediaTable,
+  POST_REVISION_REASONS,
   type PostRevisionReason,
   type PostRevisionSnapshot,
   PostRevisionMediaTable,
@@ -141,34 +142,91 @@ export async function findLatestPublishRevisions(
   });
 }
 
-export async function trimAutoRevisions(
-  db: DB,
-  postId: number,
-  options: {
-    keep: number;
+/**
+ * 修订快照的滚动保留配额——改这里就能调保留份数与字节上限。
+ *
+ * `snapshot_json` 是整篇 TipTap JSON（jsonb），ProseMirror 比等价 HTML 冗长
+ * 3～5 倍，一篇带大量代码块的长文单条就能几百 KB；免费版 PostgreSQL 总共
+ * 1 GB 且全库共享，所以 publish / restore_backup 也要有上界，不能只裁 auto。
+ * 每个写入点插入后按 (post_id, reason) 裁一轮：先按条数保留最新
+ * `count[reason]` 条，再按「从最新到自己」的累计字节裁，超过
+ * `bytesPerPostReason` 的更旧行继续删——但永远至少保留 1 条（publish 的
+ * 最新一条是「未发布改动」的对比基线，见 `findLatestPublishRevisions`）。
+ */
+export const REVISION_RETENTION = {
+  count: {
+    auto: 2,
+    publish: 2,
+    restore_backup: 2,
   },
-) {
-  const revisions = await db.query.PostRevisionsTable.findMany({
-    where: and(
-      eq(PostRevisionsTable.postId, postId),
-      eq(PostRevisionsTable.reason, "auto"),
-    ),
-    columns: {
-      id: true,
-    },
-    orderBy: [desc(PostRevisionsTable.createdAt), desc(PostRevisionsTable.id)],
-  });
+  bytesPerPostReason: 256 * 1024,
+} satisfies {
+  count: Record<PostRevisionReason, number>;
+  bytesPerPostReason: number;
+};
 
-  const staleRevisionIds = revisions
-    .slice(options.keep)
-    .map((revision) => revision.id);
-  if (staleRevisionIds.length === 0) {
-    return;
+/**
+ * 从新到旧走一遍保留规则，返回幸存的条数——裁剪 SQL 的可执行基准，单测
+ * 按它断言；改 SQL 的保留谓词时先让这里的用例过。`bytes` 是每条快照的
+ * octet_length，从最新一条开始排。
+ */
+export function countRevisionsToKeep(
+  bytesNewestFirst: Array<number>,
+  count: number,
+  byteLimit: number,
+): number {
+  let kept = 0;
+  let cumulative = 0;
+  const quota = Math.max(1, count);
+  for (let i = 0; i < bytesNewestFirst.length && kept < quota; i += 1) {
+    cumulative += bytesNewestFirst[i]!;
+    // 第 1 条无条件保留；其余在配额内且累计字节不超上限才留。
+    // 累计和单调递增，一旦越界，更旧的只会更大，直接停。
+    if (i === 0 || cumulative <= byteLimit) kept = i + 1;
+    else break;
   }
+  return kept;
+}
 
-  await db
+/**
+ * 一个 (post_id, reason) 的裁剪语句：单条 DELETE 自算保留集，没有
+ * 「先查 id 再删」的并发窗口。保留谓词与 `countRevisionsToKeep` 一致：
+ * 最新一条（rn = 1）无条件保留，其余在前 `count` 条里、且从最新到自己的
+ * 累计字节不超过上限才留。`id desc` 兜底同一毫秒内的排序稳定性。
+ */
+export function trimPostRevisionStatement(
+  db: Pick<DB, "delete">,
+  postId: number,
+  reason: PostRevisionReason,
+  retention: typeof REVISION_RETENTION = REVISION_RETENTION,
+) {
+  return db
     .delete(PostRevisionsTable)
-    .where(inArray(PostRevisionsTable.id, staleRevisionIds));
+    .where(
+      and(
+        eq(PostRevisionsTable.postId, postId),
+        eq(PostRevisionsTable.reason, reason),
+        sql`id not in (
+          select id from (
+            select id,
+                   row_number() over (order by created_at desc, id desc) as rn,
+                   sum(octet_length(snapshot_json::text)) over (order by created_at desc, id desc) as bytes_from_newest
+              from post_revisions
+             where post_id = ${postId} and reason = ${reason}
+          ) ranked
+          where rn = 1 or (rn <= ${retention.count[reason]} and bytes_from_newest <= ${retention.bytesPerPostReason})
+        )`,
+      ),
+    );
+}
+
+/** 插入后滚一轮：三个 reason 各一条 DELETE，放进 `db.batch` 的事务里跑完。 */
+export async function trimPostRevisions(db: DB, postId: number) {
+  await db.batch(
+    POST_REVISION_REASONS.map((reason) =>
+      trimPostRevisionStatement(db, postId, reason),
+    ),
+  );
 }
 
 /**
@@ -279,6 +337,11 @@ export async function restorePostSnapshot(
          )}) and ${restored}
       `);
     }
+
+    // 备份修订只在恢复/丢弃时增长，裁剪放在同一事务的最后。注意
+    // restored_from_revision_id 没有外键约束：配额裁掉的来源行会留下悬空
+    // id 且 DTO 照常带出——当前 UI 不读它，属已知取舍，别当 bug。
+    await trimPostRevisionStatement(tx, data.postId, "restore_backup");
 
     return updated[0];
   });
