@@ -37,6 +37,7 @@
 - 令牌桶对时钟回拨（NTP 校准、容器迁移）不再扣币；`cost > capacity` 死路径不再返回负的 `retryAfterMs`
 - 站点文档响应删掉硬编码的 `CDN-Cache-Control`（值固定为 HTML 档，与各文档实际 `Cache-Control` 漂移；EdgeOne 不读它）
 - `theme-provider` 测试在 Node 24 下因内置 `localStorage` 访问器压住 jsdom 实现而失败，改用内存桩
+- 回复通知不再发给已删除评论的作者，也不发给被静音的用户：此前回复一条已删除的评论仍会给其作者发「有人回复了你」，被静音用户同样照收不误
 - `auth:generate-schema` 的 better-auth 适配器从 sqlite 方言改为 pg：此前谁跑一次就会把 `auth.table.ts` 重写回 sqliteTable
 
 ### 移除

@@ -2,6 +2,8 @@ import { publicCommentUrl } from "@/features/comments/comment-url";
 import * as CommentRepo from "@/features/comments/data/comments.data";
 import { generateUnsubscribeToken } from "@/features/email/email.utils";
 import { publishNotificationEvent } from "@/features/notification/service/notification.publisher";
+import * as MutedUserRepo from "@/features/muted-users/data/muted-users.data";
+import { isMuted } from "@/features/muted-users/muted-users";
 import { serverEnv } from "@/lib/env/server.env";
 
 interface SendReplyNotificationParams {
@@ -38,6 +40,37 @@ export async function sendReplyNotification(
       JSON.stringify({
         message: "reply notification skipped, author not found or no email",
         replyToCommentId: comment.replyToCommentId,
+      }),
+    );
+    return;
+  }
+
+  // A reply to a deleted Comment has no live thread to return to, and a
+  // muted author has asked to be left alone — either way the notification
+  // would be noise, so neither one goes out.
+  const replyToComment = await CommentRepo.findCommentById(
+    context.db,
+    comment.replyToCommentId,
+  );
+  if (replyToComment && replyToComment.status !== "published") {
+    console.log(
+      JSON.stringify({
+        message: "reply notification skipped, reply-to comment is deleted",
+        replyToCommentId: comment.replyToCommentId,
+      }),
+    );
+    return;
+  }
+
+  const replyToActor = await MutedUserRepo.findUserById(
+    context.db,
+    replyToAuthor.id,
+  );
+  if (isMuted(replyToActor?.mutedAt)) {
+    console.log(
+      JSON.stringify({
+        message: "reply notification skipped, reply-to author is muted",
+        userId: replyToAuthor.id,
       }),
     );
     return;
