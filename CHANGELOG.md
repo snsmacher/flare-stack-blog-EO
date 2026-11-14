@@ -6,6 +6,12 @@
 
 ## [未发布]
 
+## [1.1.2] - 2026-11-14
+
+### 新增
+
+- Agent Skill 自有发行：后台「Agent Skill」页的下载 zip 与 `npx skills add` 安装命令改指本仓库（`snsmacher/flare-stack-blog-EO`）的版本 tag，不再借用上游仓库的发布物；Release 工作流随发版打包上传 `flare-stack-blog-skills-vX.Y.Z.zip`；OpenAPI 文档与 SKILL.md 里的 WAF 拦截说明改为平台中立表述（本站已不在 Cloudflare 上）
+
 ### 变更
 
 - 内存全面收紧（云函数只有 1 GB）：

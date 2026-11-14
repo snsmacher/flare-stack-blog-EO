@@ -162,7 +162,7 @@ it("shows the install command with a copy button and the zip link pinned to this
   await flush();
   const command = document.querySelector("code");
   expect(command?.textContent).toBe(
-    `npx skills add https://github.com/du2333/flare-stack-blog/tree/v${__APP_VERSION__}/.agents/skills/flare-stack-blog -g`,
+    `npx skills add https://github.com/snsmacher/flare-stack-blog-EO/tree/v${__APP_VERSION__}/.agents/skills/flare-stack-blog -g`,
   );
   expect(
     screen.getAllByRole("button", { name: m.common_copy_code() }),
@@ -171,7 +171,7 @@ it("shows the install command with a copy button and the zip link pinned to this
     name: m.agent_skill_download({ version: __APP_VERSION__ }),
   });
   expect(download.getAttribute("href")).toBe(
-    `https://github.com/du2333/flare-stack-blog/releases/download/v${__APP_VERSION__}/flare-stack-blog-skills-v${__APP_VERSION__}.zip`,
+    `https://github.com/snsmacher/flare-stack-blog-EO/releases/download/v${__APP_VERSION__}/flare-stack-blog-skills-v${__APP_VERSION__}.zip`,
   );
 });
 

@@ -36,7 +36,7 @@ Pairing gets a key without it passing through a conversation: an Admin generates
 
 ## Client fingerprint
 
-Send a browser \`User-Agent\` on every request, including the one for this document. A 403 whose body is Cloudflare error 1010 / \`browser_signature_banned\` is the site's WAF blocking a non-browser client, not a permission error: resend with a browser \`User-Agent\` and the same key.
+Send a browser \`User-Agent\` on every request, including the one for this document. A 403 that reads as an edge WAF block (on Cloudflare it reports error 1010 / \`browser_signature_banned\`) rather than a permission error means the site refused a non-browser client: resend with a browser \`User-Agent\` and the same key.
 
 ## Parameters and bodies
 

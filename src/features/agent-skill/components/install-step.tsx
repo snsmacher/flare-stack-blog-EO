@@ -2,9 +2,10 @@ import { Fragment } from "react";
 import { m } from "@/paraglide/messages";
 import { CopyLine } from "./copy-line";
 
-/** The skill zip attached to the upstream release this build was cut from. */
-const AGENT_SKILL_URL = `https://github.com/du2333/flare-stack-blog/releases/download/v${__APP_VERSION__}/flare-stack-blog-skills-v${__APP_VERSION__}.zip`;
-const AGENT_SKILL_INSTALL_COMMAND = `npx skills add https://github.com/du2333/flare-stack-blog/tree/v${__APP_VERSION__}/.agents/skills/flare-stack-blog -g`;
+/** 本仓库自己的 Skill 发布物：zip 随 Release 附带，安装命令指向本仓库的 tag。 */
+const AGENT_SKILL_REPO = "snsmacher/flare-stack-blog-EO";
+const AGENT_SKILL_URL = `https://github.com/${AGENT_SKILL_REPO}/releases/download/v${__APP_VERSION__}/flare-stack-blog-skills-v${__APP_VERSION__}.zip`;
+const AGENT_SKILL_INSTALL_COMMAND = `npx skills add https://github.com/${AGENT_SKILL_REPO}/tree/v${__APP_VERSION__}/.agents/skills/flare-stack-blog -g`;
 
 export function InstallStep() {
   const download = (
