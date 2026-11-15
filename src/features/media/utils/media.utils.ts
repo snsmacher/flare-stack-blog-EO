@@ -4,6 +4,26 @@ import { withoutControlCharacters } from "@/lib/unicode-text";
 export const MEDIA_NAME_MAX_LENGTH = 255;
 
 /**
+ * The format a public image request is answered in — always null here. The
+ * upstream design answers an image request in AVIF/WebP through Cloudflare
+ * Image Resizing and keys the edge cache by that format; EdgeOne has no
+ * on-demand transform (their image-processing product is discontinued), so
+ * every request is answered with the original bytes and the cache key keeps
+ * no format part.
+ */
+export function imageServedFormat(
+  _key: string,
+  _searchParams: URLSearchParams,
+  _accept: string,
+): null {
+  return null;
+}
+
+/** The orders of the Media list; the Admin's address and the list input share them. */
+export const MEDIA_SORTS = ["newest", "oldest", "largest"] as const;
+export type MediaSort = (typeof MEDIA_SORTS)[number];
+
+/**
  * How an image is used: by a post's draft or published version or by a
  * Moment (`current`), only in Post Revisions, which restoring would bring back
  * (`revisions-only`), or not at all.
@@ -147,29 +167,16 @@ export const PUBLIC_IMAGE_WIDTH = {
   cover: 800,
   body: 800,
   avatar: 400,
+  // Small square thumbnails such as the latest Moments list.
+  thumbnail: 160,
+  // A cover as the small lead of a row in the archive.
+  rowCover: 400,
   // The lightbox; Cloudflare never upscales, so smaller originals keep their size.
   zoom: 2560,
 } as const;
 
 export function getOriginalImageUrl(key: string) {
   return `/images/${key}`;
-}
-
-/**
- * The original an image transform reads. Cloudflare keeps transformed images
- * by their source URL, and only a zone purge clears that, so the source names
- * the stored file's version (its R2 ETag): once a file is replaced at the same
- * key, transforms read and cache the new one.
- */
-export function getTransformSourceUrl(
-  requestUrl: URL,
-  key: string,
-  fileVersion: string,
-) {
-  const source = new URL(getOriginalImageUrl(key), requestUrl.origin);
-  source.searchParams.set("original", "true");
-  source.searchParams.set("v", fileVersion);
-  return source.toString();
 }
 
 export function getOptimizedImageUrl(key: string, width?: number) {
@@ -200,41 +207,4 @@ export function getPublicImageSrc(src: string, width: number) {
   const next = new URL(optimized, "http://dummy.com");
   next.searchParams.set("v", version);
   return `${next.pathname}${next.search}`;
-}
-
-// Cloudflare bills each image and parameter set once a month, so only the
-// widths the site requests are transformed. Anything else gets the original,
-// which keeps arbitrary parameters from using up the transformation quota.
-export const IMAGE_TRANSFORM_WIDTHS = [400, 800, 1600, 2560] as const;
-const IMAGE_TRANSFORM_QUALITY = 80;
-const IMAGE_TRANSFORM_PARAMS = new Set(["width", "quality", "v"]);
-
-/**
- * The Cloudflare transform for a public image request, or null to serve the
- * original. Only an allowed width at the site's quality is transformed.
- */
-export function parseImageTransform(
-  searchParams: URLSearchParams,
-  accept: string,
-) {
-  for (const name of searchParams.keys()) {
-    if (!IMAGE_TRANSFORM_PARAMS.has(name)) return null;
-  }
-  const width = Number(searchParams.get("width"));
-  if (!IMAGE_TRANSFORM_WIDTHS.some((allowed) => allowed === width)) return null;
-  const quality = searchParams.get("quality");
-  if (quality !== null && Number(quality) !== IMAGE_TRANSFORM_QUALITY) {
-    return null;
-  }
-
-  const format: "avif" | "webp" | undefined = /image\/avif/.test(accept)
-    ? "avif"
-    : /image\/webp/.test(accept)
-      ? "webp"
-      : undefined;
-  return {
-    width,
-    quality: IMAGE_TRANSFORM_QUALITY,
-    ...(format ? { format } : {}),
-  };
 }

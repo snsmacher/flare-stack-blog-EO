@@ -22,8 +22,10 @@ import {
   adminPostTextColumns,
   buildPostOrderByClause,
   buildPostWhereClause,
+  commentCountSql,
   unpublishedChangesSql,
 } from "@/features/posts/data/helper";
+import type { PublicAssignment } from "@/features/posts/data/public-assignments.data";
 import {
   clearPublicTags,
   findPublicAssignments,
@@ -34,11 +36,17 @@ import {
 } from "@/features/posts/data/public-assignments.data";
 import { mapSnapshotToPublicPost } from "@/features/posts/public-snapshot";
 import type { PostItem } from "@/features/posts/schema/posts.schema";
-import { HOME_POSTS_PER_PAGE } from "@/features/posts/schema/posts.schema";
+import { HOME_POSTS_PER_PAGE } from "@/features/posts/posts.constants";
 import { isPostBodyEmpty } from "@/features/posts/utils/is-post-body-empty";
 import type { PostStatus, PublicPostSnapshot } from "@/lib/db/schema";
 import { startsWithText } from "@/lib/db/text-match";
-import { newSaveToken, PostsTable } from "@/lib/db/schema";
+import {
+  CategoriesTable,
+  newSaveToken,
+  PostsTable,
+  PostTagsTable,
+  TagsTable,
+} from "@/lib/db/schema";
 import { mediaReferenceGuards } from "@/features/posts/data/post-media.data";
 import {
   keyForWrite,
@@ -123,14 +131,18 @@ export async function getPosts(
     sortDir?: SortDirection;
     sortBy?: SortField;
     includeContent?: boolean;
+    /** One sub-query per row: only the Admin list shows the count. */
+    includeCommentCount?: boolean;
   } = {},
 ) {
+  if (options.ids?.length === 0) return [];
   const {
     offset = 0,
     limit = DEFAULT_PAGE_SIZE,
     sortDir,
     sortBy,
     includeContent = false,
+    includeCommentCount = false,
     ...filters
   } = options;
   const whereClause = buildPostWhereClause(filters);
@@ -168,6 +180,9 @@ export async function getPosts(
             saveToken: PostsTable.saveToken,
           }
         : {}),
+      ...(includeCommentCount
+        ? { commentCount: commentCountSql().mapWith(Number) }
+        : {}),
     })
     .from(PostsTable)
     .limit(Math.min(limit, 50))
@@ -184,6 +199,65 @@ export async function getPostsCount(db: DB, options: PostFilters = {}) {
     .from(PostsTable)
     .where(whereClause);
   return totalNumberofPosts[0].count;
+}
+
+/** The ids of every Post the filters select, in no particular order. */
+export async function getPostIds(db: DB, filters: PostFilters = {}) {
+  const rows = await db
+    .select({ id: PostsTable.id })
+    .from(PostsTable)
+    .where(buildPostWhereClause(filters));
+  return rows.map((row) => row.id);
+}
+
+/**
+ * The draft Category and Tags (Current Assignment) of the given Posts, in two
+ * queries whatever the number of Posts. Tags are in name order, like
+ * `getTagsByPostId`. A Post with neither has no entry.
+ */
+export async function findCurrentAssignments(
+  db: DB,
+  postIds: Array<number>,
+): Promise<Map<number, PublicAssignment>> {
+  const byPost = new Map<number, PublicAssignment>();
+  if (postIds.length === 0) return byPost;
+  const [categories, tags] = await Promise.all([
+    db
+      .select({
+        postId: PostsTable.id,
+        id: CategoriesTable.id,
+        name: CategoriesTable.name,
+      })
+      .from(PostsTable)
+      .innerJoin(CategoriesTable, eq(CategoriesTable.id, PostsTable.categoryId))
+      .where(inArray(PostsTable.id, postIds)),
+    db
+      .select({
+        postId: PostTagsTable.postId,
+        id: TagsTable.id,
+        name: TagsTable.name,
+        createdAt: TagsTable.createdAt,
+      })
+      .from(PostTagsTable)
+      .innerJoin(TagsTable, eq(TagsTable.id, PostTagsTable.tagId))
+      .where(inArray(PostTagsTable.postId, postIds))
+      .orderBy(asc(PostTagsTable.postId), asc(TagsTable.name)),
+  ]);
+  const of = (postId: number) => {
+    let assignment = byPost.get(postId);
+    if (!assignment) {
+      assignment = { category: null, tags: [] };
+      byPost.set(postId, assignment);
+    }
+    return assignment;
+  };
+  for (const { postId, ...category } of categories) {
+    of(postId).category = category;
+  }
+  for (const { postId, ...tag } of tags) {
+    of(postId).tags.push(tag);
+  }
+  return byPost;
 }
 
 /** Status facets use the same search predicate as the paginated Admin list. */

@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Site_Nav_RemoveInputs */
 
 const zh_settings_site_nav_remove = /** @type {(inputs: Settings_Site_Nav_RemoveInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`删除此项`)
+	return /** @type {LocalizedString} */ (`移除此链接`)
 };
 
 const en_settings_site_nav_remove = /** @type {(inputs: Settings_Site_Nav_RemoveInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Remove item`)
+	return /** @type {LocalizedString} */ (`Remove this link`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Remove item" |
+* | "Remove this link" |
 *
 * @param {Settings_Site_Nav_RemoveInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

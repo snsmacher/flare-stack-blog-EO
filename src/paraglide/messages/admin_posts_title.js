@@ -6,7 +6,7 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Admin_Posts_TitleInputs */
 
 const zh_admin_posts_title = /** @type {(inputs: Admin_Posts_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`文章管理`)
+	return /** @type {LocalizedString} */ (`文章`)
 };
 
 const en_admin_posts_title = /** @type {(inputs: Admin_Posts_TitleInputs) => LocalizedString} */ () => {

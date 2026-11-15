@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Editor_History_Delete_ActionInputs */
 
 const zh_editor_history_delete_action = /** @type {(inputs: Editor_History_Delete_ActionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`删除`)
+	return /** @type {LocalizedString} */ (`删除此版本`)
 };
 
 const en_editor_history_delete_action = /** @type {(inputs: Editor_History_Delete_ActionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Delete`)
+	return /** @type {LocalizedString} */ (`Delete this version`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Delete" |
+* | "Delete this version" |
 *
 * @param {Editor_History_Delete_ActionInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

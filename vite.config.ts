@@ -9,6 +9,7 @@ import { defineConfig, type Plugin } from "vite";
 import packageJson from "./package.json";
 import { resolveDatabaseUrl } from "./src/lib/db/connection-target";
 import { routedFirstSegmentsPlugin } from "./scripts/vite-routed-segments.ts";
+import { themeFixturePlugin } from "./scripts/vite-theme-fixture.ts";
 
 // EdgeOne's Node cloud functions don't reliably receive console-set env vars
 // in `process.env` at runtime (platform docs route them via context.env, but
@@ -77,6 +78,32 @@ const config = defineConfig({
       process.env.WORKERS_CI_BUILD_UUID || Date.now().toString(36),
     ),
   },
+  // For `bun scripts/bundle-report.ts --sources`; never set in a deploy.
+  build: { sourcemap: process.env.BUNDLE_SOURCEMAP === "1" },
+  environments: {
+    client: {
+      build: {
+        rolldownOptions: {
+          output: {
+            codeSplitting: {
+              // Automatic splitting leaves a chunk for every small module that
+              // two entries share. Gathering the small ones that the first load
+              // reaches anyway (with their dependencies) cuts the file count
+              // and compresses better as one file. (上游 3.13 首屏脚本减半的手段)
+              groups: [
+                {
+                  name: "small",
+                  minShareCount: 2,
+                  maxModuleSize: 4 * 1024,
+                  tags: ["$initial"],
+                },
+              ],
+            },
+          },
+        },
+      },
+    },
+  },
   resolve: {
     tsconfigPaths: true,
     alias: {
@@ -92,6 +119,7 @@ const config = defineConfig({
       cookieName: "LOCALE",
     }),
     routedFirstSegmentsPlugin(),
+    themeFixturePlugin(),
     tailwindcss(),
     devtools(),
     tanstackStart(),

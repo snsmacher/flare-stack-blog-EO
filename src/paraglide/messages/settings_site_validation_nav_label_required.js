@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Site_Validation_Nav_Label_RequiredInputs */
 
 const zh_settings_site_validation_nav_label_required = /** @type {(inputs: Settings_Site_Validation_Nav_Label_RequiredInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`请填写导航名称`)
+	return /** @type {LocalizedString} */ (`请填写链接名称`)
 };
 
 const en_settings_site_validation_nav_label_required = /** @type {(inputs: Settings_Site_Validation_Nav_Label_RequiredInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Please enter a navigation label`)
+	return /** @type {LocalizedString} */ (`Please enter a link name`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Please enter a navigation label" |
+* | "Please enter a link name" |
 *
 * @param {Settings_Site_Validation_Nav_Label_RequiredInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

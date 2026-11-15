@@ -6,7 +6,7 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Admin_Sidebar_PostsInputs */
 
 const zh_admin_sidebar_posts = /** @type {(inputs: Admin_Sidebar_PostsInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`文章管理`)
+	return /** @type {LocalizedString} */ (`文章`)
 };
 
 const en_admin_sidebar_posts = /** @type {(inputs: Admin_Sidebar_PostsInputs) => LocalizedString} */ () => {

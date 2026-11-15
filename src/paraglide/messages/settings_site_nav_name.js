@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Site_Nav_NameInputs */
 
 const zh_settings_site_nav_name = /** @type {(inputs: Settings_Site_Nav_NameInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`菜单名称`)
+	return /** @type {LocalizedString} */ (`链接名称`)
 };
 
 const en_settings_site_nav_name = /** @type {(inputs: Settings_Site_Nav_NameInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Label`)
+	return /** @type {LocalizedString} */ (`Link name`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Label" |
+* | "Link name" |
 *
 * @param {Settings_Site_Nav_NameInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

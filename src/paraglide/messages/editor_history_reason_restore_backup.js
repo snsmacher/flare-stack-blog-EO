@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Editor_History_Reason_Restore_BackupInputs */
 
 const zh_editor_history_reason_restore_backup = /** @type {(inputs: Editor_History_Reason_Restore_BackupInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`恢复或放弃修改前的草稿`)
+	return /** @type {LocalizedString} */ (`恢复前`)
 };
 
 const en_editor_history_reason_restore_backup = /** @type {(inputs: Editor_History_Reason_Restore_BackupInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Before restore or discard`)
+	return /** @type {LocalizedString} */ (`Before restore`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Before restore or discard" |
+* | "Before restore" |
 *
 * @param {Editor_History_Reason_Restore_BackupInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

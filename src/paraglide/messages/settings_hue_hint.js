@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Hue_HintInputs */
 
 const zh_settings_hue_hint = /** @type {(inputs: Settings_Hue_HintInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`滑动调整博客的主题强调色（用于按钮、链接与高亮等）`)
+	return /** @type {LocalizedString} */ (`滑动调整博客的强调色（用于按钮、链接与高亮等）`)
 };
 
 const en_settings_hue_hint = /** @type {(inputs: Settings_Hue_HintInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Adjust the blog theme accent color (used for buttons, links, and highlights)`)
+	return /** @type {LocalizedString} */ (`Adjust the blog accent colour (used for buttons, links, and highlights)`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Adjust the blog theme accent color (used for buttons, links, and highlights)" |
+* | "Adjust the blog accent colour (used for buttons, links, and highlights)" |
 *
 * @param {Settings_Hue_HintInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

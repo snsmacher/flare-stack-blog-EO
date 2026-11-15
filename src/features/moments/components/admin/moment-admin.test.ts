@@ -12,7 +12,7 @@ import {
 import type { ReactNode } from "react";
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type {
   AdminMoment,
   PublicMoment,
@@ -31,7 +31,7 @@ vi.mock("@/hooks/use-motion", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/hooks/use-motion")>()),
   useMotionPresence: (open: boolean) => open,
 }));
-vi.mock("sonner", () => ({
+vi.mock("@/lib/toast", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }));
 
@@ -63,7 +63,7 @@ vi.mock("@tanstack/react-router", () => ({
   useRouteContext: () => ({
     siteConfig: {
       author: "Author",
-      theme: { fuwari: { avatar: "/avatar.png" } },
+      avatar: "/avatar.png",
     },
   }),
 }));
@@ -215,11 +215,8 @@ vi.mock(
   },
 );
 
-let queryClient: QueryClient;
-let invalidated: ReturnType<typeof vi.spyOn>;
-
 // Node 24 的内置 `localStorage` 访问器（需要 --localstorage-file）会压住
-// jsdom 的实现，这里像 theme-provider.test.ts 一样装一个内存桩。
+// jsdom 的实现，这里像 colour-scheme-provider.test.ts 一样装一个内存桩。
 const storage = new Map<string, string>();
 const localStorageStub = {
   getItem: (key: string) => storage.get(key) ?? null,
@@ -227,6 +224,9 @@ const localStorageStub = {
   removeItem: (key: string) => void storage.delete(key),
   clear: () => storage.clear(),
 };
+
+let queryClient: QueryClient;
+let invalidated: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   storage.clear();

@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Site_Field_DescriptionInputs */
 
 const zh_settings_site_field_description = /** @type {(inputs: Settings_Site_Field_DescriptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`描述`)
+	return /** @type {LocalizedString} */ (`站点描述`)
 };
 
 const en_settings_site_field_description = /** @type {(inputs: Settings_Site_Field_DescriptionInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Description`)
+	return /** @type {LocalizedString} */ (`Site Description`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Description" |
+* | "Site Description" |
 *
 * @param {Settings_Site_Field_DescriptionInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

@@ -6,7 +6,7 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Site_Nav_AddInputs */
 
 const zh_settings_site_nav_add = /** @type {(inputs: Settings_Site_Nav_AddInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`添加导航项`)
+	return /** @type {LocalizedString} */ (`添加链接`)
 };
 
 const en_settings_site_nav_add = /** @type {(inputs: Settings_Site_Nav_AddInputs) => LocalizedString} */ () => {

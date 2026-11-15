@@ -1,3 +1,9 @@
+/** The last page number an address or an API input may name. */
+export const MAX_PAGE_NUMBER = 1_000_000;
+
+/** The longest search text the Admin's lists and their API inputs take. */
+export const SEARCH_TEXT_MAX_LENGTH = 200;
+
 /**
  * Cache headers.
  *

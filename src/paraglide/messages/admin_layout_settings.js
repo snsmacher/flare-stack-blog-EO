@@ -6,7 +6,7 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Admin_Layout_SettingsInputs */
 
 const zh_admin_layout_settings = /** @type {(inputs: Admin_Layout_SettingsInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`系统设置`)
+	return /** @type {LocalizedString} */ (`设置`)
 };
 
 const en_admin_layout_settings = /** @type {(inputs: Admin_Layout_SettingsInputs) => LocalizedString} */ () => {

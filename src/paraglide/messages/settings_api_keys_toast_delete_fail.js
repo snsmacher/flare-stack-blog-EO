@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Api_Keys_Toast_Delete_FailInputs */
 
 const zh_settings_api_keys_toast_delete_fail = /** @type {(inputs: Settings_Api_Keys_Toast_Delete_FailInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`删除失败`)
+	return /** @type {LocalizedString} */ (`撤销失败`)
 };
 
 const en_settings_api_keys_toast_delete_fail = /** @type {(inputs: Settings_Api_Keys_Toast_Delete_FailInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Could not delete the key`)
+	return /** @type {LocalizedString} */ (`Could not revoke the key`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Could not delete the key" |
+* | "Could not revoke the key" |
 *
 * @param {Settings_Api_Keys_Toast_Delete_FailInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

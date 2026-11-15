@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Api_Keys_Toast_Delete_SuccessInputs */
 
 const zh_settings_api_keys_toast_delete_success = /** @type {(inputs: Settings_Api_Keys_Toast_Delete_SuccessInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`密钥已删除`)
+	return /** @type {LocalizedString} */ (`密钥已撤销`)
 };
 
 const en_settings_api_keys_toast_delete_success = /** @type {(inputs: Settings_Api_Keys_Toast_Delete_SuccessInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`API Key deleted`)
+	return /** @type {LocalizedString} */ (`API Key revoked`)
 };
 
 /**
 * | output |
 * | --- |
-* | "API Key deleted" |
+* | "API Key revoked" |
 *
 * @param {Settings_Api_Keys_Toast_Delete_SuccessInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Api_Keys_Delete_ConfirmInputs */
 
 const zh_settings_api_keys_delete_confirm = /** @type {(inputs: Settings_Api_Keys_Delete_ConfirmInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`删除`)
+	return /** @type {LocalizedString} */ (`撤销`)
 };
 
 const en_settings_api_keys_delete_confirm = /** @type {(inputs: Settings_Api_Keys_Delete_ConfirmInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Delete`)
+	return /** @type {LocalizedString} */ (`Revoke`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Delete" |
+* | "Revoke" |
 *
 * @param {Settings_Api_Keys_Delete_ConfirmInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

@@ -14,7 +14,14 @@ import {
 } from "@/features/config/config.resolve";
 import type { SiteConfig } from "@/features/config/config.schema";
 import * as ConfigRepo from "@/features/config/data/config.data";
+import {
+  SITE_ICON_SIZES,
+  type SiteIconField,
+  type SiteIconRejection,
+  type SiteIconSize,
+} from "@/features/config/utils/site-icon";
 import * as Storage from "@/features/media/data/media.storage";
+import { err, ok, type Result } from "@/lib/errors";
 import {
   isWebhookEmpty,
   missingWebhookField,
@@ -220,12 +227,71 @@ export async function uploadSiteAsset(input: {
   assetPath: string;
 }): Promise<{ url: string }> {
   const { url } = await Storage.putSiteAsset(input.file, input.assetPath);
+  return { url: siteAssetAddress(url, input.assetPath) };
+}
 
-  const timestamp = Math.floor(Date.now() / 1000);
-  const isFavicon = input.assetPath.startsWith("favicon/");
-  const finalUrl = isFavicon
-    ? `${url}?original=true&v=${timestamp}`
-    : `${url}?v=${timestamp}`;
+/**
+ * The address a stored site asset is saved under: the version busts caches,
+ * and a favicon is served as stored.
+ */
+function siteAssetAddress(url: string, assetPath: string) {
+  const version = Math.floor(Date.now() / 1000);
+  return assetPath.startsWith("favicon/")
+    ? `${url}?original=true&v=${version}`
+    : `${url}?v=${version}`;
+}
 
-  return { url: finalUrl };
+export type SiteIconUpload = {
+  icons: Record<SiteIconField, string>;
+  /** False when the sizes could not be made and each holds the original. */
+  resized: boolean;
+};
+
+export type SiteIconError =
+  | SiteIconRejection
+  | { reason: "SITE_ICON_UNREADABLE" }
+  | { reason: "SITE_ICON_STORE_FAILED" };
+
+/**
+ * Stores one square PNG or JPEG as the site's raster icons. 本仓库没有
+ * Cloudflare Images 绑定，无法在上传时生成各尺寸 PNG，也不做解码校验
+ * （不依赖 planSiteIcon）：沿用上游降级路径，把原图存到每个固定路径，
+ * `resized` 恒为 false。原图按上传时的字节原样保存。
+ */
+export async function uploadSiteIcon(input: {
+  file: File;
+}): Promise<Result<SiteIconUpload, SiteIconError>> {
+  const { file } = input;
+
+  // 与上游 transform 失败时的降级一致：每个尺寸路径都存原图，
+  // 这样已保存的地址在各尺寸下仍指向存在的文件。
+  const outputs: Array<{ target: SiteIconSize; file: File }> =
+    SITE_ICON_SIZES.map((target) => ({ target, file }));
+
+  // A failed write may leave some paths replaced; the saved addresses stay as
+  // they were until the config is saved, and the Admin uploads again.
+  try {
+    const stored = await Promise.all(
+      outputs.map(async ({ target, file: output }) => {
+        const { url } = await Storage.putSiteAsset(output, target.path);
+        return [target.field, siteAssetAddress(url, target.path)] as const;
+      }),
+    );
+    return ok({
+      icons: Object.fromEntries(stored) as Record<SiteIconField, string>,
+      resized: false,
+    });
+  } catch (error) {
+    logIconError("site icon store error", error);
+    return err({ reason: "SITE_ICON_STORE_FAILED" });
+  }
+}
+
+function logIconError(message: string, error: unknown) {
+  console.error(
+    JSON.stringify({
+      message,
+      error: error instanceof Error ? error.message : String(error),
+    }),
+  );
 }

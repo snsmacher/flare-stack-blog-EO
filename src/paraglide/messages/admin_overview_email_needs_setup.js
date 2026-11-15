@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Admin_Overview_Email_Needs_SetupInputs */
 
 const zh_admin_overview_email_needs_setup = /** @type {(inputs: Admin_Overview_Email_Needs_SetupInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`邮件未配置`)
+	return /** @type {LocalizedString} */ (`通知邮箱尚未设置`)
 };
 
 const en_admin_overview_email_needs_setup = /** @type {(inputs: Admin_Overview_Email_Needs_SetupInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Email is not configured`)
+	return /** @type {LocalizedString} */ (`The notification email is not set`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Email is not configured" |
+* | "The notification email is not set" |
 *
 * @param {Admin_Overview_Email_Needs_SetupInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

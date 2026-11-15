@@ -6,7 +6,7 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{ name: NonNullable<unknown> }} Settings_Api_Keys_Delete_DescInputs */
 
 const zh_settings_api_keys_delete_desc = /** @type {(inputs: Settings_Api_Keys_Delete_DescInputs) => LocalizedString} */ (i) => {
-	return /** @type {LocalizedString} */ (`删除后，名称为「${i?.name}」的密钥将立即失效。`)
+	return /** @type {LocalizedString} */ (`撤销后，名称为「${i?.name}」的密钥将立即失效。`)
 };
 
 const en_settings_api_keys_delete_desc = /** @type {(inputs: Settings_Api_Keys_Delete_DescInputs) => LocalizedString} */ (i) => {

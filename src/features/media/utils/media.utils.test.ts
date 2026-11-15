@@ -5,12 +5,10 @@ import {
   getOriginalImageUrl,
   getPublicImageSrc,
   getPublicImageSrcSet,
-  getTransformSourceUrl,
   importedMediaName,
   isSameImageType,
   MEDIA_NAME_MAX_LENGTH,
   mediaUsageOf,
-  parseImageTransform,
   PUBLIC_IMAGE_WIDTH,
 } from "./media.utils";
 
@@ -46,37 +44,6 @@ describe("image URLs", () => {
     );
   });
 
-  it.each([
-    ["width=400&quality=80", 400],
-    ["quality=80&width=800", 800],
-    ["width=1600&quality=80&v=177", 1600],
-    ["width=2560", 2560],
-  ])("transforms the allowed request %s", (query, width) => {
-    expect(
-      parseImageTransform(new URLSearchParams(query), "image/avif,image/webp"),
-    ).toEqual({ width, quality: 80, format: "avif" });
-  });
-
-  it.each([
-    "",
-    "v=1",
-    "original=true",
-    "quality=80",
-    "width=799&quality=80",
-    "width=800&quality=90",
-    "width=800&height=600",
-    "width=800&fit=cover",
-    "width=800&original=true",
-  ])("serves the original for %s", (query) => {
-    expect(parseImageTransform(new URLSearchParams(query), "")).toBeNull();
-  });
-
-  it("negotiates webp when avif is not accepted", () => {
-    expect(
-      parseImageTransform(new URLSearchParams("width=800"), "image/webp"),
-    ).toEqual({ width: 800, quality: 80, format: "webp" });
-  });
-
   it("offers a 1x and 2x source set for public images", () => {
     expect(getPublicImageSrcSet("/images/abc.png?v=3", [800, 1600])).toBe(
       "/images/abc.png?quality=80&width=800&v=3 800w, /images/abc.png?quality=80&width=1600&v=3 1600w",
@@ -89,26 +56,6 @@ describe("image URLs", () => {
     ).toBeUndefined();
   });
 
-  it("fetches the transform source at the stored file's version", () => {
-    expect(
-      getTransformSourceUrl(
-        new URL(
-          "https://blog.example/images/asset/themes/fuwari/home-bg.webp?quality=80&width=1600&v=177",
-        ),
-        "asset/themes/fuwari/home-bg.webp",
-        "etag-1",
-      ),
-    ).toBe(
-      "https://blog.example/images/asset/themes/fuwari/home-bg.webp?original=true&v=etag-1",
-    );
-    expect(
-      getTransformSourceUrl(
-        new URL("https://blog.example/images/abc.png?quality=80&width=800"),
-        "abc.png",
-        "etag-2",
-      ),
-    ).toBe("https://blog.example/images/abc.png?original=true&v=etag-2");
-  });
 });
 
 describe("cleanMediaName", () => {

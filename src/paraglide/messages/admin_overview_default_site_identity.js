@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Admin_Overview_Default_Site_IdentityInputs */
 
 const zh_admin_overview_default_site_identity = /** @type {(inputs: Admin_Overview_Default_Site_IdentityInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`站点还是默认信息`)
+	return /** @type {LocalizedString} */ (`站点信息仍是默认值`)
 };
 
 const en_admin_overview_default_site_identity = /** @type {(inputs: Admin_Overview_Default_Site_IdentityInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Site still uses the default name`)
+	return /** @type {LocalizedString} */ (`The site still has its default details`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Site still uses the default name" |
+* | "The site still has its default details" |
 *
 * @param {Admin_Overview_Default_Site_IdentityInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

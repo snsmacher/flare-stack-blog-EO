@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Maintenance_Search_Desc_ShortInputs */
 
 const zh_settings_maintenance_search_desc_short = /** @type {(inputs: Settings_Maintenance_Search_Desc_ShortInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`全量同步数据库记录至搜索映射表。`)
+	return /** @type {LocalizedString} */ (`搜索结果缺少文章或内容过时时使用。`)
 };
 
 const en_settings_maintenance_search_desc_short = /** @type {(inputs: Settings_Maintenance_Search_Desc_ShortInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Full sync of database records to the search mapping table.`)
+	return /** @type {LocalizedString} */ (`Use when search results are missing posts or show outdated content.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Full sync of database records to the search mapping table." |
+* | "Use when search results are missing posts or show outdated content." |
 *
 * @param {Settings_Maintenance_Search_Desc_ShortInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

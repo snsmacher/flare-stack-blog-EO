@@ -6,7 +6,7 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Friend_Links_Admin_TitleInputs */
 
 const zh_friend_links_admin_title = /** @type {(inputs: Friend_Links_Admin_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`友链管理`)
+	return /** @type {LocalizedString} */ (`友链`)
 };
 
 const en_friend_links_admin_title = /** @type {(inputs: Friend_Links_Admin_TitleInputs) => LocalizedString} */ () => {

@@ -6,7 +6,7 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{ version: NonNullable<unknown> }} Admin_Overview_Update_AvailableInputs */
 
 const zh_admin_overview_update_available = /** @type {(inputs: Admin_Overview_Update_AvailableInputs) => LocalizedString} */ (i) => {
-	return /** @type {LocalizedString} */ (`有新版本 ${i?.version}`)
+	return /** @type {LocalizedString} */ (`新版本 ${i?.version} 可用`)
 };
 
 const en_admin_overview_update_available = /** @type {(inputs: Admin_Overview_Update_AvailableInputs) => LocalizedString} */ (i) => {

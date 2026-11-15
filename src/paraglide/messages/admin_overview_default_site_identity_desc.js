@@ -6,7 +6,7 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Admin_Overview_Default_Site_Identity_DescInputs */
 
 const zh_admin_overview_default_site_identity_desc = /** @type {(inputs: Admin_Overview_Default_Site_Identity_DescInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`换成你自己的站点名称和作者`)
+	return /** @type {LocalizedString} */ (`请改为自己的站点名称和作者`)
 };
 
 const en_admin_overview_default_site_identity_desc = /** @type {(inputs: Admin_Overview_Default_Site_Identity_DescInputs) => LocalizedString} */ () => {

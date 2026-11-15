@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Site_Validation_Nav_Href_RequiredInputs */
 
 const zh_settings_site_validation_nav_href_required = /** @type {(inputs: Settings_Site_Validation_Nav_Href_RequiredInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`请填写跳转链接`)
+	return /** @type {LocalizedString} */ (`请填写链接地址`)
 };
 
 const en_settings_site_validation_nav_href_required = /** @type {(inputs: Settings_Site_Validation_Nav_Href_RequiredInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Please enter a URL or path`)
+	return /** @type {LocalizedString} */ (`Please enter a link address`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Please enter a URL or path" |
+* | "Please enter a link address" |
 *
 * @param {Settings_Site_Validation_Nav_Href_RequiredInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

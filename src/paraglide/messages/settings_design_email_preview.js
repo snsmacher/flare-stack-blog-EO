@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Design_Email_PreviewInputs */
 
 const zh_settings_design_email_preview = /** @type {(inputs: Settings_Design_Email_PreviewInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`邮件预览`)
+	return /** @type {LocalizedString} */ (`预览邮件`)
 };
 
 const en_settings_design_email_preview = /** @type {(inputs: Settings_Design_Email_PreviewInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Email preview`)
+	return /** @type {LocalizedString} */ (`Preview email`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Email preview" |
+* | "Preview email" |
 *
 * @param {Settings_Design_Email_PreviewInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

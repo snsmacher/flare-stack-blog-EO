@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{ name: NonNullable<unknown> }} Agent_Skill_Pair_Revoke_DescInputs */
 
 const zh_agent_skill_pair_revoke_desc = /** @type {(inputs: Agent_Skill_Pair_Revoke_DescInputs) => LocalizedString} */ (i) => {
-	return /** @type {LocalizedString} */ (`将立即删除「${i?.name}」获得的 API Key，该 agent 随即无法访问博客。`)
+	return /** @type {LocalizedString} */ (`将立即撤销「${i?.name}」获得的 API Key，该 agent 随即无法访问博客。`)
 };
 
 const en_agent_skill_pair_revoke_desc = /** @type {(inputs: Agent_Skill_Pair_Revoke_DescInputs) => LocalizedString} */ (i) => {
-	return /** @type {LocalizedString} */ (`The API Key issued to “${i?.name}” will be deleted at once, and the agent can no longer reach the blog.`)
+	return /** @type {LocalizedString} */ (`The API Key issued to “${i?.name}” will be revoked at once, and the agent can no longer reach the blog.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "The API Key issued to “{name}” will be deleted at once, and the agent can no longer reach the blog." |
+* | "The API Key issued to “{name}” will be revoked at once, and the agent can no longer reach the blog." |
 *
 * @param {Agent_Skill_Pair_Revoke_DescInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

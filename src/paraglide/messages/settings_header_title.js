@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Header_TitleInputs */
 
 const zh_settings_header_title = /** @type {(inputs: Settings_Header_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`系统设置`)
+	return /** @type {LocalizedString} */ (`设置`)
 };
 
 const en_settings_header_title = /** @type {(inputs: Settings_Header_TitleInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`System Settings`)
+	return /** @type {LocalizedString} */ (`Settings`)
 };
 
 /**
 * | output |
 * | --- |
-* | "System Settings" |
+* | "Settings" |
 *
 * @param {Settings_Header_TitleInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

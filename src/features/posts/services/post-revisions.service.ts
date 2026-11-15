@@ -17,6 +17,7 @@ import type {
 } from "@/features/posts/schema/post-revisions.schema";
 import { parseRevisionSnapshot } from "@/features/posts/schema/post-revisions.schema";
 import { removeCodeBlockHighlighting } from "@/features/posts/utils/apply-code-block-highlighting";
+import { convertToPlainText } from "@/features/posts/utils/content";
 import { withEditorAttributes } from "@/features/posts/utils/post-content-rules";
 import { calculatePostHash } from "@/features/posts/utils/sync";
 import { isUniqueViolation, POST_SLUG } from "@/lib/db/unique-keys";
@@ -24,6 +25,14 @@ import { ms } from "@/lib/duration";
 import { err, ok } from "@/lib/errors";
 
 const AUTO_SNAPSHOT_MIN_INTERVAL = "2m";
+
+/** Characters of text in the body, without whitespace, so the list can show how much a version holds. */
+function countBodyCharacters(contentJson: PostRevisionSnapshot["contentJson"]) {
+  return (
+    convertToPlainText(contentJson).replace(/\s/g, "").match(/./gsu)?.length ??
+    0
+  );
+}
 
 function toRevisionSnapshot(
   post: Awaited<ReturnType<typeof PostRepo.findPostById>>,
@@ -98,6 +107,7 @@ export async function listPostRevisions(
     createdAt: revision.createdAt,
     title: revision.snapshotJson.title,
     summary: revision.snapshotJson.summary,
+    contentLength: countBodyCharacters(revision.snapshotJson.contentJson),
   }));
 }
 

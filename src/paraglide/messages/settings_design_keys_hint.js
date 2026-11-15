@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Design_Keys_HintInputs */
 
 const zh_settings_design_keys_hint = /** @type {(inputs: Settings_Design_Keys_HintInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`为脚本和外部工具创建访问凭据。`)
+	return /** @type {LocalizedString} */ (`通过「创建」为脚本和外部工具生成访问凭据。`)
 };
 
 const en_settings_design_keys_hint = /** @type {(inputs: Settings_Design_Keys_HintInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Create credentials for scripts and external tools.`)
+	return /** @type {LocalizedString} */ (`Credentials for scripts and external tools are made with “Create”.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Create credentials for scripts and external tools." |
+* | "Credentials for scripts and external tools are made with “Create”." |
 *
 * @param {Settings_Design_Keys_HintInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

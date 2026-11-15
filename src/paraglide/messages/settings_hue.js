@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_HueInputs */
 
 const zh_settings_hue = /** @type {(inputs: Settings_HueInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`主题主色`)
+	return /** @type {LocalizedString} */ (`主色`)
 };
 
 const en_settings_hue = /** @type {(inputs: Settings_HueInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Theme Accent Color`)
+	return /** @type {LocalizedString} */ (`Accent colour`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Theme Accent Color" |
+* | "Accent colour" |
 *
 * @param {Settings_HueInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

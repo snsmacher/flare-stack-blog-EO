@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Settings_Site_Nav_UrlInputs */
 
 const zh_settings_site_nav_url = /** @type {(inputs: Settings_Site_Nav_UrlInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`跳转链接`)
+	return /** @type {LocalizedString} */ (`链接地址`)
 };
 
 const en_settings_site_nav_url = /** @type {(inputs: Settings_Site_Nav_UrlInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Target URL`)
+	return /** @type {LocalizedString} */ (`Link address`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Target URL" |
+* | "Link address" |
 *
 * @param {Settings_Site_Nav_UrlInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

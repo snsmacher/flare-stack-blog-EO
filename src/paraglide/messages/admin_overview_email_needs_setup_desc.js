@@ -6,7 +6,7 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Admin_Overview_Email_Needs_Setup_DescInputs */
 
 const zh_admin_overview_email_needs_setup_desc = /** @type {(inputs: Admin_Overview_Email_Needs_Setup_DescInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`新评论和友链申请不会发邮件提醒你`)
+	return /** @type {LocalizedString} */ (`新评论和友链申请不会通过邮件提醒`)
 };
 
 const en_admin_overview_email_needs_setup_desc = /** @type {(inputs: Admin_Overview_Email_Needs_Setup_DescInputs) => LocalizedString} */ () => {

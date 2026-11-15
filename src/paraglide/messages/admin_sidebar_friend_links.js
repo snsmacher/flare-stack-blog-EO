@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Admin_Sidebar_Friend_LinksInputs */
 
 const zh_admin_sidebar_friend_links = /** @type {(inputs: Admin_Sidebar_Friend_LinksInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`友链管理`)
+	return /** @type {LocalizedString} */ (`友链`)
 };
 
 const en_admin_sidebar_friend_links = /** @type {(inputs: Admin_Sidebar_Friend_LinksInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Links`)
+	return /** @type {LocalizedString} */ (`Friend Links`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Links" |
+* | "Friend Links" |
 *
 * @param {Admin_Sidebar_Friend_LinksInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

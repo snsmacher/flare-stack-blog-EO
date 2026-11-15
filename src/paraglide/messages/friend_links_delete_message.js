@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{ name: NonNullable<unknown> }} Friend_Links_Delete_MessageInputs */
 
 const zh_friend_links_delete_message = /** @type {(inputs: Friend_Links_Delete_MessageInputs) => LocalizedString} */ (i) => {
-	return /** @type {LocalizedString} */ (`删除「${i?.name}」`)
+	return /** @type {LocalizedString} */ (`「${i?.name}」的记录将被永久删除，无法恢复，申请人不会收到通知。`)
 };
 
 const en_friend_links_delete_message = /** @type {(inputs: Friend_Links_Delete_MessageInputs) => LocalizedString} */ (i) => {
-	return /** @type {LocalizedString} */ (`Delete “${i?.name}”`)
+	return /** @type {LocalizedString} */ (`The record of “${i?.name}” will be permanently deleted and cannot be restored. The applicant is not notified.`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Delete “{name}”" |
+* | "The record of “{name}” will be permanently deleted and cannot be restored. The applicant is not notified." |
 *
 * @param {Friend_Links_Delete_MessageInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options
