@@ -6,17 +6,17 @@ import { getLocale, experimentalStaticLocale } from '../runtime.js';
 /** @typedef {{}} Media_Unreferenced_EmptyInputs */
 
 const zh_media_unreferenced_empty = /** @type {(inputs: Media_Unreferenced_EmptyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`没有未被文章引用的图片`)
+	return /** @type {LocalizedString} */ (`没有未被引用的图片`)
 };
 
 const en_media_unreferenced_empty = /** @type {(inputs: Media_Unreferenced_EmptyInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`No images without post references`)
+	return /** @type {LocalizedString} */ (`No unreferenced images`)
 };
 
 /**
 * | output |
 * | --- |
-* | "No images without post references" |
+* | "No unreferenced images" |
 *
 * @param {Media_Unreferenced_EmptyInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

@@ -13,6 +13,11 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // seo.test.ts 的 beforeAll 要静态导入整条 $slug 路由图（含 moments 页），
+    // 慢机器上 60s 默认值不够；router.test 的懒加载集合在 moments 加入后
+    // 也变重了，5s 默认 testTimeout 同样吃紧。
+    hookTimeout: 240_000,
+    testTimeout: 15_000,
     include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
     exclude: ["**/*.integration.test.ts"],
   },

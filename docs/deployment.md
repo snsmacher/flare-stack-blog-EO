@@ -109,8 +109,8 @@ Makers 控制台 → 新建项目 → 导入 Git 仓库 → 选本仓库的 `mai
 | `VITE_UMAMI_WEBSITE_ID` | 否 | 前端埋点开关。不填则页面里没有统计脚本 |
 | `UMAMI_SRC` | 否 | umami 站点根地址；`/stats.js` 与 `/api/send` 靠它反代 |
 | `UMAMI_WEBSITE_ID` | 否 | 服务端查文章热度用，值同上 |
-| `UMAMI_USERNAME` / `UMAMI_PASSWORD` | 否 | 自托管 umami 用账号密码换 token，不需要 API key |
-| `UMAMI_API_KEY` | 否 | umami Cloud 模式才需要；自托管用账号密码 |
+| `UMAMI_API_KEY` | 否 | Umami Cloud 和 3.4.0 及以上的自托管 umami 都用它（自托管的在 umami 的 Settings → API keys 中创建） |
+| `UMAMI_USERNAME` / `UMAMI_PASSWORD` | 否 | 3.4.0 之前的自托管 umami 用账号密码换 token；不要和 `UMAMI_API_KEY` 同时配 |
 | `TURNSTILE_SECRET_KEY` / `VITE_TURNSTILE_SITE_KEY` | 否 | 评论等人机验证，两个要一起配；都不填则静默放行 |
 | `PG_POOL_MAX` | 否 | 连接池上限，默认 5。实例多时别调高 |
 | `UPDATE_CHECK_REPO` | 否 | `owner/repo`，后台维护页据此比对 release；不填即关闭更新检查 |

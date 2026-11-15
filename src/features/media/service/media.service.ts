@@ -19,6 +19,7 @@ import {
   imageExtensionOf,
   isSameImageType,
 } from "@/features/media/utils/media.utils";
+import { momentHeading } from "@/features/moments/utils/moment-heading";
 import { purgeWorkersCache } from "@/features/cache/workers-cache";
 import { mediaPurgeTarget } from "@/features/cache/workers-cache-policy";
 import * as PostMediaRepo from "@/features/posts/data/post-media.data";
@@ -131,6 +132,17 @@ export async function mediaExists(context: DbContext, key: string) {
 
 export async function getLinkedPosts(context: DbContext, key: string) {
   return await PostMediaRepo.getPostsByMediaKey(context.db, key);
+}
+
+/** The Moments that show the image, titled as the Admin's other Moment lists title them. */
+export async function getLinkedMoments(context: DbContext, key: string) {
+  const moments = await MediaRepo.getMomentsByMediaKey(context.db, key);
+  // A Moment with images has no video, so a blank text is an image Moment.
+  return moments.map((moment) => ({
+    id: moment.id,
+    title: momentHeading({ text: moment.text, hasVideo: false }),
+    postedAt: moment.postedAt,
+  }));
 }
 
 export async function getLinkedMediaKeys(

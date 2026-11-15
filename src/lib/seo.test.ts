@@ -30,7 +30,7 @@ beforeAll(async () => {
     loaderData: unknown;
   }) => { scripts?: Array<HeadScript> };
   headOf = (loaderData) => head({ loaderData });
-}, 60_000);
+}, 240_000);
 
 /**
  * The post page's head scripts as the server writes them into the page:

@@ -5,6 +5,7 @@ import { extractAllImageKeys } from "@/features/posts/utils/content";
 import { findPgError } from "@/lib/db/pg-error";
 import {
   MediaTable,
+  MomentImagesTable,
   PostMediaTable,
   PostRevisionMediaTable,
   PostRevisionsTable,
@@ -231,7 +232,7 @@ export async function getPostsByMediaKey(db: DB, key: string) {
 }
 
 export async function isMediaInUse(db: DB, key: string): Promise<boolean> {
-  const [inPost, inRevision] = await Promise.all([
+  const [inPost, inRevision, inMoment] = await Promise.all([
     db
       .select({ id: PostMediaTable.postId })
       .from(PostMediaTable)
@@ -244,9 +245,17 @@ export async function isMediaInUse(db: DB, key: string): Promise<boolean> {
       .innerJoin(MediaTable, eq(MediaTable.id, PostRevisionMediaTable.mediaId))
       .where(eq(MediaTable.key, key))
       .limit(1),
+    // A Moment's images are references like a Post's: the media library
+    // treats Media a Moment shows as in use.
+    db
+      .select({ id: MomentImagesTable.momentId })
+      .from(MomentImagesTable)
+      .innerJoin(MediaTable, eq(MediaTable.id, MomentImagesTable.mediaId))
+      .where(eq(MediaTable.key, key))
+      .limit(1),
   ]);
 
-  return inPost.length > 0 || inRevision.length > 0;
+  return inPost.length > 0 || inRevision.length > 0 || inMoment.length > 0;
 }
 
 export async function getLinkedMediaKeys(
@@ -255,7 +264,7 @@ export async function getLinkedMediaKeys(
 ): Promise<Array<string>> {
   if (keys.length === 0) return [];
 
-  const [inPosts, inRevisions] = await Promise.all([
+  const [inPosts, inRevisions, inMoments] = await Promise.all([
     db
       .selectDistinct({ key: MediaTable.key })
       .from(MediaTable)
@@ -269,7 +278,17 @@ export async function getLinkedMediaKeys(
         eq(MediaTable.id, PostRevisionMediaTable.mediaId),
       )
       .where(inArray(MediaTable.key, keys)),
+    db
+      .selectDistinct({ key: MediaTable.key })
+      .from(MediaTable)
+      .innerJoin(
+        MomentImagesTable,
+        eq(MediaTable.id, MomentImagesTable.mediaId),
+      )
+      .where(inArray(MediaTable.key, keys)),
   ]);
 
-  return [...new Set([...inPosts, ...inRevisions].map((r) => r.key))];
+  return [
+    ...new Set([...inPosts, ...inRevisions, ...inMoments].map((r) => r.key)),
+  ];
 }

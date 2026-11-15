@@ -10,13 +10,13 @@ const zh_media_reference_fail = /** @type {(inputs: Media_Reference_FailInputs) 
 };
 
 const en_media_reference_fail = /** @type {(inputs: Media_Reference_FailInputs) => LocalizedString} */ () => {
-	return /** @type {LocalizedString} */ (`Could not load post references`)
+	return /** @type {LocalizedString} */ (`Could not load references`)
 };
 
 /**
 * | output |
 * | --- |
-* | "Could not load post references" |
+* | "Could not load references" |
 *
 * @param {Media_Reference_FailInputs} inputs
 * @param {{ locale?: "zh" | "en" }} options

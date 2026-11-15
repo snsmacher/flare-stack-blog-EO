@@ -1,4 +1,5 @@
 import type { JSONContent } from "@tiptap/react";
+import { POST_STATUSES } from "@/lib/enum-values";
 import { relations } from "drizzle-orm";
 import { createdAt, id, updatedAt } from "./helper";
 import {
@@ -12,7 +13,7 @@ import {
   primaryKey,
 } from "drizzle-orm/pg-core";
 
-export const POST_STATUSES = ["draft", "published"] as const;
+export { POST_STATUSES };
 
 export type PublicPostCover = {
   mediaId: number;

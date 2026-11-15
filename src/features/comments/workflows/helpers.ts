@@ -1,6 +1,10 @@
-import { publicCommentUrl } from "@/features/comments/comment-url";
+import {
+  publicCommentUrl,
+  type CommentPage,
+} from "@/features/comments/comment-url";
 import * as CommentRepo from "@/features/comments/data/comments.data";
 import { generateUnsubscribeToken } from "@/features/email/email.utils";
+import type { CommentNotificationTarget } from "@/features/notification/notification.schema";
 import { publishNotificationEvent } from "@/features/notification/service/notification.publisher";
 import * as MutedUserRepo from "@/features/muted-users/data/muted-users.data";
 import { isMuted } from "@/features/muted-users/muted-users";
@@ -14,9 +18,11 @@ interface SendReplyNotificationParams {
     userId: string | null;
     content: string | null;
   };
-  post: {
-    slug: string;
+  /** The Post or Moment replied on, as notifications name and link it. */
+  target: {
+    target: CommentNotificationTarget;
     title: string;
+    page: CommentPage;
   };
   skipNotifyUserId?: string;
 }
@@ -25,7 +31,7 @@ export async function sendReplyNotification(
   context: DbContext & { executionCtx: ExecutionContext },
   params: SendReplyNotificationParams,
 ): Promise<void> {
-  const { comment, post } = params;
+  const { comment, target } = params;
 
   if (!comment.replyToCommentId) return;
 
@@ -111,7 +117,7 @@ export async function sendReplyNotification(
   );
   const unsubscribeUrl = `https://${DOMAIN}/unsubscribe?userId=${replyToAuthor.id}&type=${unsubscribeType}&token=${token}`;
 
-  const commentUrl = publicCommentUrl(DOMAIN, post.slug, comment.id);
+  const commentUrl = publicCommentUrl(DOMAIN, target.page, comment.id);
 
   try {
     await publishNotificationEvent(
@@ -122,7 +128,8 @@ export async function sendReplyNotification(
             ? "comment.reply_to_admin_published"
             : "comment.reply_to_user_published",
         data: {
-          postTitle: post.title,
+          target: target.target,
+          postTitle: target.title,
           replierName,
           replyPreview: `${replyPreview}${replyPreview.length >= 100 ? "..." : ""}`,
           commentUrl,

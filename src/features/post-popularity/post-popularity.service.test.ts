@@ -10,7 +10,7 @@ describe("post popularity service", () => {
     const service = createPostPopularityService({
       now: () => new Date("2026-08-23T00:15:00.000Z"),
       resolveConfig: vi.fn(() => ({
-        type: "cloud" as const,
+        auth: "api-key" as const,
         apiUrl: "https://api.umami.is/v1",
         websiteId: "website-id",
         apiKey: "cloud-key",
@@ -86,7 +86,7 @@ describe("post popularity service", () => {
       const service = createPostPopularityService({
         now: () => new Date("2026-08-23T00:15:00.000Z"),
         resolveConfig: vi.fn(() => ({
-          type: "cloud" as const,
+          auth: "api-key" as const,
           apiUrl: "https://api.umami.is/v1",
           websiteId: "website-id",
           apiKey: "cloud-key",

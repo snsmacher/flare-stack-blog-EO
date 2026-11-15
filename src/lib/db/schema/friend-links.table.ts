@@ -1,12 +1,9 @@
 import { user } from "./auth.table";
+import { FRIEND_LINK_STATUSES } from "@/lib/enum-values";
 import { createdAt, id, updatedAt } from "./helper";
 import { pgTable, text, index } from "drizzle-orm/pg-core";
 
-export const FRIEND_LINK_STATUSES = [
-  "pending",
-  "approved",
-  "rejected",
-] as const;
+export { FRIEND_LINK_STATUSES };
 
 export const FriendLinksTable = pgTable(
   "friend_links",

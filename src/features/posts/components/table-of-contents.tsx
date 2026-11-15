@@ -251,6 +251,8 @@ export default function TableOfContents({
               className={cn(
                 "px-2 flex gap-2 relative transition w-full min-h-9 rounded-xl py-2 z-10",
                 "hover:bg-(--fuwari-toc-btn-hover) active:bg-(--fuwari-toc-btn-active)",
+                // Inside the entry: the list clips what is drawn around it.
+                "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--fuwari-primary)",
               )}
             >
               <TocBadge heading={heading} />
@@ -424,6 +426,7 @@ function CompactToc({
         open={open}
         anchor={open ? buttonRef.current : null}
         onDismiss={() => setOpen(false)}
+        returnFocusOnEscape
         placement="top-end"
         // Focusing the current section scrolls it into view.
         initialFocus={() =>

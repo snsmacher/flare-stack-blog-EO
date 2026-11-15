@@ -1,15 +1,12 @@
 import type { JSONContent } from "@tiptap/react";
+import { POST_REVISION_REASONS } from "@/lib/enum-values";
 import { relations } from "drizzle-orm";
 import { createdAt, id } from "./helper";
 import type { PostStatus } from "./posts.table";
 import { PostsTable } from "./posts.table";
 import { pgTable, text, integer, jsonb, index } from "drizzle-orm/pg-core";
 
-export const POST_REVISION_REASONS = [
-  "auto",
-  "publish",
-  "restore_backup",
-] as const;
+export { POST_REVISION_REASONS };
 
 export interface PostRevisionSnapshot {
   title: string;
